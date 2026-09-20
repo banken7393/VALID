@@ -24,6 +24,27 @@ How-it-works: `.valid/features/<slug>/how-it-works.mmd` (Mermaid — never SVG).
 **You own the board.** Edit `data.json`, Mermaid, and workspace markdown with your file tools.  
 The CLI is scaffolding only (`valid feature new` creates empty structure + worktree + quarantine Dev Container). Do not treat CLI `board`/`task`/`report` as the primary writers.
 
+## Board JSON contract (strict keys)
+
+The dashboard and CLI **fail to load** the board if shapes are wrong. Always use these shapes:
+
+```json
+"what": [{ "id": "ac1", "description": "…" }]
+"decisions": [{ "id": "D1", "title": "short name", "detail": "full rationale" }]
+"assumptions": [{ "id": "A1", "detail": "… Breaks if wrong: …" }]
+"tasks": [{ "id": "t1", "title": "…", "status": "pending", "covers": ["ac1"] }]
+"phases": [{ "id": "p1", "title": "…", "order": 1 }]
+"environment.isolation_warning": false
+```
+
+Forbidden / broken shapes (do **not** write these):
+
+- `what` as string array
+- `decisions[].text` or `assumptions[].text` instead of `title`/`detail`
+- `isolation_warning` as a prose string (must be boolean)
+- Mermaid under `workspace/how-it-works.mmd` — correct path is `.valid/features/<slug>/how-it-works.mmd`
+- Putting the full Mermaid only in `data.json` `how_it_works` — keep Mermaid in the `.mmd` file; JSON field may be empty or a one-line note
+
 ## Produces
 
 - `north_star`, early `assumptions[]`, `decisions[]` candidates

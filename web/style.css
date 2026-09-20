@@ -47,6 +47,10 @@ body {
   color: var(--muted);
 }
 
+.live-stamp.is-error {
+  color: var(--fail);
+}
+
 .brand {
   margin: 0;
   font-family: var(--font-display);

@@ -47,11 +47,15 @@ Phases come from Spec; take the first not done. No `phases[]` → the whole feat
 2. **Sketch** the phase’s tasks lightly (`id`, `title`, `status`, `covers`): enough to see shape and coverage, no more. Detail is decided right before each task is built; the list may grow as the build teaches you.
 3. **Coverage**: every AC in the phase covered by ≥1 task. Close every gap in the sketch, then report `Coverage: N/N, 0 gaps`.
 
-Example task shape:
+Example task / decision shapes:
 
 ```json
 { "id": "t1", "title": "…", "status": "pending", "covers": ["ac1"] }
+{ "id": "D1", "title": "short name", "detail": "rationale" }
+{ "id": "A1", "detail": "assumption. Breaks if wrong: …" }
 ```
+
+Do not use a `text` field on decisions/assumptions — use `title`/`detail`.
 
 ## 3. Build with TDD, task by task
 

@@ -37,12 +37,27 @@ title: Code Style Conventions
 category: conventions
 tags:
   - style
+  - board
 scope: project
 ---
 
 # Code Style
 
 Prefer clear names, small diffs, and project ` + "`test_command`" + ` as the source of truth for how to run tests.
+
+## Feature board JSON (` + "`.valid/features/<slug>/data.json`" + `)
+
+Keys are English and **typed**. Wrong shapes make ` + "`valid dashboard`" + ` / gate fail to load the board.
+
+` + "```" + `json
+"what": [{ "id": "ac1", "description": "…" }]
+"decisions": [{ "id": "D1", "title": "…", "detail": "…" }]
+"assumptions": [{ "id": "A1", "detail": "…" }]
+"tasks": [{ "id": "t1", "title": "…", "status": "pending|doing|done", "covers": ["ac1"] }]
+"environment": { "isolation_warning": false }
+` + "```" + `
+
+Mermaid lives at ` + "`.valid/features/<slug>/how-it-works.mmd`" + ` (not under ` + "`workspace/`" + `).
 `
 
 const knowledgeTesting = `---

@@ -59,6 +59,8 @@ Shape each AC as:
 { "id": "ac1", "description": "…" }
 ```
 
+Never write `what` as a bare string array. Wrong: `"what": ["…"]`. Right: objects with `id` + `description`.
+
 Rules:
 
 - Minimal, indivisible, testable.

@@ -62,12 +62,16 @@
       }
       const data = await res.json();
       els.error.hidden = true;
+      if (els.liveStamp) {
+        els.liveStamp.classList.remove('is-error');
+      }
       await render(data);
     } catch (err) {
       els.error.hidden = false;
       els.error.textContent = `Waiting for board: ${err.message}`;
       if (els.liveStamp) {
-        els.liveStamp.textContent = 'Board unloadable — fix data.json (poll every 1s)';
+        els.liveStamp.classList.add('is-error');
+        els.liveStamp.textContent = `Board unloadable: ${err.message}`;
       }
     }
   }

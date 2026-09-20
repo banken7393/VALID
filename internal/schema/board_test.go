@@ -29,6 +29,68 @@ func TestNewBoardValidate(t *testing.T) {
 	}
 }
 
+func TestLoadBoardDogfoodLLMShapes(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "data.json")
+	body := `{
+  "version": "2",
+  "feature": "generic-dossiers",
+  "mode": "feature",
+  "lifecycle": "plan",
+  "autonomy": "in_the_loop",
+  "north_star": "Kernel de dossier genérico",
+  "how_it_works": "prose note only",
+  "what": [
+    "Evolucionar applications → kernel dossier",
+    "Introducir catálogo seedado"
+  ],
+  "phases": [],
+  "tasks": [],
+  "decisions": [
+    { "id": "D1", "text": "Concepto e identidad = dossier." }
+  ],
+  "assumptions": [
+    {
+      "id": "A1",
+      "text": "Hoy Application = dossier package.",
+      "breaks_if_wrong": "Si solo NZ, overkill."
+    }
+  ],
+  "tdd": { "passed": 0, "failed": 0, "total": 0 },
+  "audit": { "passed": false, "findings": [], "at": "0001-01-01T00:00:00Z" },
+  "environment": {
+    "worktree_path": "/workspace/.valid/worktrees/generic-dossiers",
+    "isolation_warning": "Soft isolation: feature Dev Environment no levantó",
+    "database_enabled": false
+  },
+  "pending_promotions": [],
+  "paths": {
+    "board_dir": ".valid/features/generic-dossiers",
+    "how_it_works": ".valid/features/generic-dossiers/how-it-works.mmd"
+  },
+  "updated_at": "2026-09-20T15:44:00Z"
+}`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := LoadBoard(path)
+	if err != nil {
+		t.Fatalf("LoadBoard dogfood shapes: %v", err)
+	}
+	if len(b.What) != 2 || b.What[0].ID != "ac1" {
+		t.Fatalf("what: %+v", b.What)
+	}
+	if len(b.Decisions) != 1 || b.Decisions[0].Title == "" {
+		t.Fatalf("decisions: %+v", b.Decisions)
+	}
+	if len(b.Assumptions) != 1 || !strings.Contains(b.Assumptions[0].Detail, "Breaks if wrong") {
+		t.Fatalf("assumptions: %+v", b.Assumptions)
+	}
+	if !b.Environment.IsolationWarning {
+		t.Fatal("expected isolation_warning string → true")
+	}
+}
+
 func TestAcceptanceCriterionAcceptsStringJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "data.json")

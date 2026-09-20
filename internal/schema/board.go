@@ -85,12 +85,24 @@ func (a *AcceptanceCriterion) UnmarshalJSON(data []byte) error {
 		a.Description = s
 		return nil
 	}
-	type acAlias AcceptanceCriterion
+	type acAlias struct {
+		ID          string `json:"id"`
+		Description string `json:"description"`
+		Text        string `json:"text"`
+		Title       string `json:"title"`
+	}
 	var tmp acAlias
 	if err := json.Unmarshal(data, &tmp); err != nil {
 		return err
 	}
-	*a = AcceptanceCriterion(tmp)
+	a.ID = tmp.ID
+	a.Description = strings.TrimSpace(tmp.Description)
+	if a.Description == "" {
+		a.Description = strings.TrimSpace(tmp.Text)
+	}
+	if a.Description == "" {
+		a.Description = strings.TrimSpace(tmp.Title)
+	}
 	return nil
 }
 
@@ -133,16 +145,141 @@ type Task struct {
 
 // Decision records a product/tech choice.
 type Decision struct {
-	ID     string `json:"id"`
-	Title  string `json:"title"`
-	Detail string `json:"detail,omitempty"`
+	ID     string   `json:"id"`
+	Title  string   `json:"title"`
+	Detail string   `json:"detail,omitempty"`
 	Tags   []string `json:"tags,omitempty"`
+}
+
+// UnmarshalJSON accepts title/detail or a single "text" field (common LLM shape).
+func (d *Decision) UnmarshalJSON(data []byte) error {
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+	var wire struct {
+		ID     string   `json:"id"`
+		Title  string   `json:"title"`
+		Detail string   `json:"detail"`
+		Text   string   `json:"text"`
+		Tags   []string `json:"tags"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	d.ID = wire.ID
+	d.Title = strings.TrimSpace(wire.Title)
+	d.Detail = strings.TrimSpace(wire.Detail)
+	d.Tags = wire.Tags
+	text := strings.TrimSpace(wire.Text)
+	if text != "" {
+		if d.Title == "" {
+			d.Title = text
+		} else if d.Detail == "" {
+			d.Detail = text
+		}
+	}
+	return nil
 }
 
 // Assumption records an explicit assumption.
 type Assumption struct {
 	ID     string `json:"id"`
 	Detail string `json:"detail"`
+}
+
+// UnmarshalJSON accepts detail, or text (+ optional breaks_if_wrong).
+func (a *Assumption) UnmarshalJSON(data []byte) error {
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+	var wire struct {
+		ID            string `json:"id"`
+		Detail        string `json:"detail"`
+		Text          string `json:"text"`
+		BreaksIfWrong string `json:"breaks_if_wrong"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	a.ID = wire.ID
+	a.Detail = strings.TrimSpace(wire.Detail)
+	if a.Detail == "" {
+		a.Detail = strings.TrimSpace(wire.Text)
+	}
+	if br := strings.TrimSpace(wire.BreaksIfWrong); br != "" {
+		if a.Detail == "" {
+			a.Detail = br
+		} else {
+			a.Detail = a.Detail + "\nBreaks if wrong: " + br
+		}
+	}
+	return nil
+}
+
+// EnvironmentState tracks isolation / DC status.
+type EnvironmentState struct {
+	WorktreePath     string `json:"worktree_path,omitempty"`
+	Branch           string `json:"branch,omitempty"`      // feature/<slug>
+	BaseBranch       string `json:"base_branch,omitempty"` // principal branch the worktree was cut from
+	DevcontainerPath string `json:"devcontainer_path,omitempty"`
+	IsolationWarning bool   `json:"isolation_warning"`
+	DatabaseEnabled  bool   `json:"database_enabled"`
+}
+
+// UnmarshalJSON tolerates isolation_warning as bool or non-empty string (LLM prose).
+func (e *EnvironmentState) UnmarshalJSON(data []byte) error {
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+	var wire struct {
+		WorktreePath     string          `json:"worktree_path"`
+		Branch           string          `json:"branch"`
+		BaseBranch       string          `json:"base_branch"`
+		DevcontainerPath string          `json:"devcontainer_path"`
+		IsolationWarning json.RawMessage `json:"isolation_warning"`
+		DatabaseEnabled  json.RawMessage `json:"database_enabled"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	e.WorktreePath = wire.WorktreePath
+	e.Branch = wire.Branch
+	e.BaseBranch = wire.BaseBranch
+	e.DevcontainerPath = wire.DevcontainerPath
+	e.IsolationWarning = flexBool(wire.IsolationWarning)
+	e.DatabaseEnabled = flexBool(wire.DatabaseEnabled)
+	return nil
+}
+
+func flexBool(raw json.RawMessage) bool {
+	raw = json.RawMessage(strings.TrimSpace(string(raw)))
+	if len(raw) == 0 || string(raw) == "null" {
+		return false
+	}
+	if raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return false
+		}
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return false
+		}
+		switch strings.ToLower(s) {
+		case "false", "0", "no", "off":
+			return false
+		default:
+			return true
+		}
+	}
+	var b bool
+	if err := json.Unmarshal(raw, &b); err != nil {
+		return false
+	}
+	return b
 }
 
 // TestCase is one named test result from valid report.
@@ -175,16 +312,6 @@ type AuditState struct {
 	Passed   bool      `json:"passed"`
 	Findings []Finding `json:"findings"`
 	At       time.Time `json:"at,omitempty"`
-}
-
-// EnvironmentState tracks isolation / DC status.
-type EnvironmentState struct {
-	WorktreePath      string `json:"worktree_path,omitempty"`
-	Branch            string `json:"branch,omitempty"`      // feature/<slug>
-	BaseBranch        string `json:"base_branch,omitempty"` // principal branch the worktree was cut from
-	DevcontainerPath  string `json:"devcontainer_path,omitempty"`
-	IsolationWarning  bool   `json:"isolation_warning"`
-	DatabaseEnabled   bool   `json:"database_enabled"`
 }
 
 // Promotion is a pending env/deps change.

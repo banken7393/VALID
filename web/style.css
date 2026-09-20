@@ -121,9 +121,12 @@ body {
 .status-pill[data-status="plan"],
 .status-pill[data-status="spec"],
 .status-pill[data-status="build"],
-.status-pill[data-status="in_the_loop"],
-.status-pill[data-status="above_the_loop"] {
+.status-pill[data-status="in_the_loop"] {
   color: var(--warn);
+}
+
+.status-pill[data-status="above_the_loop"] {
+  color: var(--accent);
 }
 
 .panel {

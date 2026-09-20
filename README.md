@@ -109,7 +109,7 @@ You (human)
         └─► MCP tools    ──► .valid/knowledge/** + .valid/scripts/**
 ```
 
-Open `valid dashboard --feature <slug>` anytime to **see** that progress visually (lifecycle, ACs, tasks, tests, Mermaid, gate).
+Open `valid dashboard --feature <slug>` anytime to **see** that progress visually (lifecycle, autonomy, ACs, tasks, tests, Mermaid, gate).
 
 ---
 
@@ -360,7 +360,7 @@ Chat is a terrible status page. VALID keeps a **per-feature contract on disk** t
 .valid/worktrees/<slug>/   # git worktree + feature .devcontainer/ (not for minipatch)
 ```
 
-**On screen (`valid dashboard`):** a loopback HTTP UI that polls the board and shows lifecycle, acceptance criteria, tasks, decisions, test evidence, Mermaid how-it-works, and gate findings. That is the intended way to **watch AI implementation progress**.
+**On screen (`valid dashboard`):** a loopback HTTP UI that polls the board and shows lifecycle, autonomy, acceptance criteria, tasks, decisions, test evidence, Mermaid how-it-works, and gate findings. That is the intended way to **watch AI implementation progress**.
 
 ```bash
 valid dashboard --feature my-feature

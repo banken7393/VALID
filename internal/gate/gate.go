@@ -48,21 +48,23 @@ func RunWithOptions(repoRoot string, b *schema.Board, cfg schema.Config, opts Op
 		}
 	}
 
-	// Soft isolation warning.
-	if b.Environment.IsolationWarning || (b.Mode != schema.ModeMinipatch && b.Environment.WorktreePath == "") {
-		findings = append(findings, schema.Finding{
-			Code:     "isolation_warning",
-			Severity: schema.SevWarning,
-			Message:  "working outside feature Dev Environment (soft isolation)",
-		})
-	}
-	if b.Mode != schema.ModeMinipatch && b.Environment.WorktreePath != "" {
-		if _, err := os.Stat(b.Environment.WorktreePath); err != nil {
+	// Soft isolation is expected for minipatch; do not warn (or trip isolation.strict).
+	if b.Mode != schema.ModeMinipatch {
+		if b.Environment.IsolationWarning || b.Environment.WorktreePath == "" {
 			findings = append(findings, schema.Finding{
 				Code:     "isolation_warning",
 				Severity: schema.SevWarning,
-				Message:  "feature worktree path missing: " + b.Environment.WorktreePath,
+				Message:  "working outside feature Dev Environment (soft isolation)",
 			})
+		}
+		if wt := strings.TrimSpace(b.Environment.WorktreePath); wt != "" {
+			if _, err := os.Stat(wt); err != nil {
+				findings = append(findings, schema.Finding{
+					Code:     "worktree_missing",
+					Severity: schema.SevError,
+					Message:  "feature worktree path missing: " + wt,
+				})
+			}
 		}
 	}
 
@@ -114,7 +116,7 @@ func RunWithOptions(repoRoot string, b *schema.Board, cfg schema.Config, opts Op
 	if b.TDD.Total == 0 {
 		findings = append(findings, schema.Finding{
 			Code: "no_tests", Severity: schema.SevError,
-			Message: fmt.Sprintf("no executable tests reported (run %q and record results on the board)", cfg.TestCommand),
+			Message: fmt.Sprintf("no executable tests reported (run `valid gate` to execute %q)", cfg.TestCommand),
 		})
 	} else if !b.TestsGreen() {
 		findings = append(findings, schema.Finding{
@@ -168,9 +170,9 @@ func RunWithOptions(repoRoot string, b *schema.Board, cfg schema.Config, opts Op
 	return Result{Passed: passed, Findings: findings}
 }
 
-// executeTestCommand runs cfg.TestCommand and updates board TDD aggregates.
-// Returns an error finding when the command cannot be started; nil when run completed
-// (pass or fail is reflected on the board for TestsGreen checks).
+// executeTestCommand runs cfg.TestCommand and replaces board TDD evidence with the suite result.
+// Returns an error finding when the command cannot be started or the worktree is missing;
+// nil when the run completed (pass/fail is reflected on the board for TestsGreen checks).
 func executeTestCommand(repoRoot string, b *schema.Board, cfg schema.Config) *schema.Finding {
 	cmdLine := strings.TrimSpace(cfg.TestCommand)
 	if cmdLine == "" {
@@ -180,25 +182,38 @@ func executeTestCommand(repoRoot string, b *schema.Board, cfg schema.Config) *sc
 		}
 	}
 	cwd := repoRoot
-	if b.Mode != schema.ModeMinipatch && strings.TrimSpace(b.Environment.WorktreePath) != "" {
-		if st, err := os.Stat(b.Environment.WorktreePath); err == nil && st.IsDir() {
-			cwd = b.Environment.WorktreePath
+	if b.Mode != schema.ModeMinipatch {
+		wt := strings.TrimSpace(b.Environment.WorktreePath)
+		if wt == "" {
+			return &schema.Finding{
+				Code: "worktree_missing", Severity: schema.SevError,
+				Message: "feature worktree_path is empty; refusing to run tests in the principal repo",
+			}
 		}
+		st, err := os.Stat(wt)
+		if err != nil || !st.IsDir() {
+			return &schema.Finding{
+				Code: "worktree_missing", Severity: schema.SevError,
+				Message: "feature worktree path missing: " + wt,
+			}
+		}
+		cwd = wt
 	}
-	ctxCwd := cwd
 	// shell-form so project commands like `go test ./...` / `npm test` work.
 	cmd := exec.Command("bash", "-lc", cmdLine)
-	cmd.Dir = ctxCwd
+	cmd.Dir = cwd
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 	err := cmd.Run()
 	out := truncateRunOutput(buf.String(), 32*1024)
-	name := "valid-gate:" + filepath.Base(ctxCwd)
+	name := "valid-gate:" + filepath.Base(cwd)
 	status := schema.TestPass
 	if err != nil {
 		status = schema.TestFail
 	}
+	// Live suite run owns TDD truth — drop stale cases so pending/fail leftovers cannot veto green.
+	b.TDD.Cases = nil
 	_ = b.ApplyReport(status, name, out, "")
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); ok {
@@ -206,7 +221,7 @@ func executeTestCommand(repoRoot string, b *schema.Board, cfg schema.Config) *sc
 		}
 		return &schema.Finding{
 			Code: "test_command_error", Severity: schema.SevError,
-			Message: fmt.Sprintf("failed to run %q in %s: %v", cmdLine, ctxCwd, err),
+			Message: fmt.Sprintf("failed to run %q in %s: %v", cmdLine, cwd, err),
 		}
 	}
 	return nil

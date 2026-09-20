@@ -37,7 +37,7 @@ Walk the board against the working tree:
 | Each task `status` matches reality (`done` only if truly done) | Yes — fix board or code |
 | Each AC is satisfied by code, or explicitly deferred by the human | Yes |
 | Every `what[].id` appears in some `tasks[].covers` | Yes (gate) |
-| Executable tests recorded and green per `test_command` | Yes (gate) |
+| Executable tests green via `valid gate` (`test_command`) | Yes (gate) |
 | Mermaid still draws the mechanism that shipped | Soft → redraw or note stale |
 | Open assumptions resolved, invalidated (with cost), or explicitly deferred | Soft → surface |
 | Behaviour built beyond the WHAT | Soft → add AC or strip code |

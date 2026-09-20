@@ -112,3 +112,63 @@ func TestGateRunsTestCommand(t *testing.T) {
 		t.Fatal("expected fail after exit 1")
 	}
 }
+
+func TestGateMissingWorktreeDoesNotFallback(t *testing.T) {
+	dir := t.TempDir()
+	b := schema.NewBoard("pay", schema.ModeFeature)
+	b.Lifecycle = schema.LifeAudit
+	b.HowItWorks = "flowchart TD\n  client[Client] -->|POST /pay| api[API]\n  api --> db[(DB)]\n  api -->|webhook| provider[Provider]\n"
+	_ = b.SetWhat([]schema.AcceptanceCriterion{{ID: "ac1", Description: "charge card"}})
+	_ = b.UpsertTask("t1", "charge", "done", "", []string{"ac1"})
+	b.Environment.WorktreePath = filepath.Join(dir, "gone-worktree")
+	cfg := schema.DefaultConfig()
+	cfg.TestCommand = "exit 0"
+	res := Run(dir, b, cfg)
+	if res.Passed {
+		t.Fatal("expected fail when worktree is missing")
+	}
+	found := false
+	for _, f := range res.Findings {
+		if f.Code == "worktree_missing" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected worktree_missing, got %#v", res.Findings)
+	}
+}
+
+func TestGateLiveRunClearsStaleTDD(t *testing.T) {
+	dir := t.TempDir()
+	b := schema.NewBoard("x", schema.ModeMinipatch)
+	b.Lifecycle = schema.LifeAudit
+	_ = b.SetWhat([]schema.AcceptanceCriterion{{ID: "ac1", Description: "a"}})
+	_ = b.UpsertTask("t1", "do", "done", "", []string{"ac1"})
+	_ = b.ApplyReport(schema.TestFail, "OldFail", "stale", "")
+	_ = b.ApplyReport(schema.TestPending, "OldPending", "", "")
+	cfg := schema.DefaultConfig()
+	cfg.TestCommand = "exit 0"
+	res := Run(dir, b, cfg)
+	if !res.Passed {
+		t.Fatalf("expected pass; stale cases must not veto live green, %#v", res.Findings)
+	}
+	if !b.TestsGreen() || b.TDD.Failed != 0 {
+		t.Fatalf("expected only live suite evidence, got %+v", b.TDD)
+	}
+}
+
+func TestGateMinipatchIgnoresIsolationStrict(t *testing.T) {
+	dir := t.TempDir()
+	b := schema.NewBoard("x", schema.ModeMinipatch)
+	b.Lifecycle = schema.LifeAudit
+	b.Environment.IsolationWarning = true
+	_ = b.SetWhat([]schema.AcceptanceCriterion{{ID: "ac1", Description: "a"}})
+	_ = b.UpsertTask("t1", "do", "done", "", []string{"ac1"})
+	_ = b.ApplyReport(schema.TestPass, "T", "", "")
+	cfg := schema.DefaultConfig()
+	cfg.Isolation.Strict = true
+	res := trustRun(dir, b, cfg)
+	if !res.Passed {
+		t.Fatalf("minipatch soft isolation must not fail under isolation.strict, %#v", res.Findings)
+	}
+}

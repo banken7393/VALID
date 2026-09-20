@@ -95,7 +95,7 @@ func newEnvUpCmd() *cobra.Command {
 func newEnvDownCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "down <slug>",
-		Short: "Tear down feature Devcontainer and remove worktree",
+		Short: "Stop feature container and delete worktree (no merge)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			repo, err := resolveRepo()

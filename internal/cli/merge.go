@@ -59,15 +59,16 @@ func newMergeCmd() *cobra.Command {
 			if wt == "" {
 				wt = filepath.Join(repo, env.WorktreesDir, slug)
 			}
-			if err := env.Down(wt, slug); err != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "warning: env down: %v\n", err)
-			}
 			mgr, err := env.NewManager(repo)
 			if err != nil {
 				return err
 			}
+			// Merge first so a failed merge leaves the quarantine container intact for recovery.
 			if err := mgr.MergeWorktree(slug, base); err != nil {
 				return err
+			}
+			if err := env.Down(wt, slug); err != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "warning: env down: %v\n", err)
 			}
 			_ = b.SetLifecycle(schema.LifeDone)
 			b.Environment.WorktreePath = ""

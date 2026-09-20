@@ -74,8 +74,10 @@
     els.autonomy.dataset.status = autonomy;
 
     const passed = !!data.audit?.passed;
-    els.gate.textContent = data.audit?.findings ? (passed ? 'passed' : 'failed') : '—';
-    els.gate.dataset.passed = passed ? 'true' : 'false';
+    // Empty findings [] is truthy in JS; only show pass/fail after a real gate run (audit.at).
+    const gateRan = !!data.audit?.at;
+    els.gate.textContent = gateRan ? (passed ? 'passed' : 'failed') : '—';
+    els.gate.dataset.passed = gateRan ? (passed ? 'true' : 'false') : '';
 
     const env = data.environment || {};
     els.isolation.textContent = env.isolation_warning ? 'warning' : (env.worktree_path ? 'quarantine' : '—');

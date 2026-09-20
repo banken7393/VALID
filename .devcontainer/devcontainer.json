@@ -10,6 +10,9 @@
     }
   },
   "remoteUser": "vscode",
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly,consistency=cached"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -34,6 +37,5 @@
       "label": "VALID MCP HTTP",
       "onAutoForward": "silent"
     }
-  },
-  //"postCreateCommand": "go mod download"
+  }
 }

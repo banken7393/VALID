@@ -143,10 +143,21 @@ Language-agnostic: set `test_command` (`npm test`, `go test ./...`, `pytest`, �
 ```bash
 git clone <this-repo>
 cd VALID
-make build
+make build                 # this machine / Dev Container → bin/valid
 export PATH="$PWD/bin:$PATH"
 valid --help
 ```
+
+Cross-compile for distribution (no local Go needed for consumers):
+
+```bash
+make dist                  # linux (amd64+arm64), windows/amd64, darwin (amd64+arm64)
+# or one target:
+make build-linux           # → bin/valid-linux-amd64  (Dev Container / WSL default)
+make build-windows         # → bin/valid-windows-amd64.exe
+```
+
+Attach the `bin/valid-*` artifacts to a GitHub Release. Consumers copy the matching binary into their project (e.g. `./valid`) and run it — no compile step.
 
 ---
 

@@ -1,0 +1,13 @@
+{
+  "mcp": {
+    "valid": {
+      "command": "valid",
+      "args": ["mcp"]
+    }
+  },
+  "instructions": [
+    "Follow VALID skills under .valid/skills/ (plan → spec → build → audit → finish; patch/minipatch; delegate).",
+    "Use agents under .valid/agents/ (interviewer, developer, reviewer, delegate). Board autonomy: in_the_loop (default) or above_the_loop.",
+    "Edit .valid/features/<slug>/data.json yourself. The valid CLI is scaffold and plumbing (gate/promote/merge/env). MCP is knowledge RAG plus .valid/scripts tools."
+  ]
+}

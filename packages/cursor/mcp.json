@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "valid": {
+      "command": "valid",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}

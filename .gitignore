@@ -1,0 +1,31 @@
+# Binaries
+/bin/
+/valid
+*.exe
+*.test
+*.out
+
+# Go
+vendor/
+.gopath/
+.gocache/
+
+# VALID temporary directories
+.valid/worktrees/
+.valid/features/
+# legacy v1 global board (init deletes if present)
+.valid/data.json
+
+# Env / secrets
+.env
+*.env
+!.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Debug
+__debug_bin*

@@ -1,0 +1,8 @@
+{
+  "name": "valid",
+  "version": "0.1.0",
+  "description": "VALID adapter for Claude Code \u2014 skills, agents, MCP knowledge RAG + project scripts",
+  "author": {
+    "name": "VALID"
+  }
+}

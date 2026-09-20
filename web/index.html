@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VALID</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    window.mermaid = mermaid;
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+  </script>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="brand-block">
+      <p class="brand">VALID</p>
+      <p class="tagline">Visual progress of AI feature work — board state, not chat vibes</p>
+    </header>
+
+    <main>
+      <section class="status-row" aria-live="polite">
+        <div>
+          <p class="label">Feature</p>
+          <p id="feature" class="value">—</p>
+        </div>
+        <div>
+          <p class="label">Lifecycle</p>
+          <p id="lifecycle" class="value status-pill">—</p>
+        </div>
+        <div>
+          <p class="label">Mode</p>
+          <p id="mode" class="value">—</p>
+        </div>
+        <div>
+          <p class="label">Autonomy</p>
+          <p id="autonomy" class="value status-pill">—</p>
+        </div>
+        <div>
+          <p class="label">Gate</p>
+          <p id="gate" class="value review-badge" data-passed="false">—</p>
+        </div>
+        <div>
+          <p class="label">Isolation</p>
+          <p id="isolation" class="value">—</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>North star / ACs</h2>
+        <p id="north-star" class="spec-title">—</p>
+        <ul id="acceptance"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Phases</h2>
+        <ul id="phases-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>How it works</h2>
+        <div id="diagram" class="diagram"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Tasks</h2>
+        <ul id="tasks-list" class="tests-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Decisions</h2>
+        <ul id="decisions-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Assumptions</h2>
+        <ul id="assumptions-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Pending promotions</h2>
+        <ul id="promotions-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Tests</h2>
+        <p id="tests-summary" class="value">—</p>
+        <ul id="tests-list" class="tests-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Audit findings</h2>
+        <ol id="findings" class="history"></ol>
+      </section>
+
+      <section class="panel">
+        <h2>Last test output</h2>
+        <pre id="output" class="output">No test output yet.</pre>
+      </section>
+    </main>
+
+    <p id="error" class="error" hidden></p>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

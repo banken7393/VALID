@@ -1,0 +1,39 @@
+{
+  "name": "VALID",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    }
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go"
+      ],
+      "settings": {
+        "go.useLanguageServer": true,
+        "files.eol": "\n"
+      }
+    }
+  },
+  "forwardPorts": [
+    7432,
+    7433
+  ],
+  "portsAttributes": {
+    "7432": {
+      "label": "VALID dashboard",
+      "onAutoForward": "notify"
+    },
+    "7433": {
+      "label": "VALID MCP HTTP",
+      "onAutoForward": "silent"
+    }
+  },
+  //"postCreateCommand": "go mod download"
+}

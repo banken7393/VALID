@@ -1,0 +1,6 @@
+# MCP: VALID knowledge RAG (stdio)
+# Merge into your Codex config (e.g. ~/.codex/config.toml).
+
+[mcp_servers.valid]
+command = "valid"
+args = ["mcp"]

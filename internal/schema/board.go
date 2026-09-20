@@ -63,6 +63,58 @@ type AcceptanceCriterion struct {
 	Description string `json:"description"`
 }
 
+// UnmarshalJSON accepts either an object {"id","description"} or a bare string
+// (common LLM mistake). Strings become description; empty id is backfilled on load.
+func (a *AcceptanceCriterion) UnmarshalJSON(data []byte) error {
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+	if data[0] == '"' {
+		var s string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		s = strings.TrimSpace(s)
+		// "ac1: something" / "ac1 — something"
+		if id, desc, ok := splitLabeledAC(s); ok {
+			a.ID = id
+			a.Description = desc
+			return nil
+		}
+		a.Description = s
+		return nil
+	}
+	type acAlias AcceptanceCriterion
+	var tmp acAlias
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+	*a = AcceptanceCriterion(tmp)
+	return nil
+}
+
+func splitLabeledAC(s string) (id, desc string, ok bool) {
+	for _, sep := range []string{": ", " — ", " - ", ":"} {
+		if i := strings.Index(s, sep); i > 0 {
+			cand := strings.TrimSpace(s[:i])
+			rest := strings.TrimSpace(s[i+len(sep):])
+			if rest != "" && looksLikeACID(cand) {
+				return cand, rest, true
+			}
+		}
+	}
+	return "", "", false
+}
+
+func looksLikeACID(s string) bool {
+	if s == "" || strings.ContainsAny(s, " \t\n") {
+		return false
+	}
+	lower := strings.ToLower(s)
+	return strings.HasPrefix(lower, "ac") || strings.HasPrefix(lower, "what")
+}
+
 // Phase is a delivery phase on the board.
 type Phase struct {
 	ID    string `json:"id"`
@@ -585,10 +637,40 @@ func LoadBoard(path string) (*Board, error) {
 	if b.Autonomy == "" {
 		b.Autonomy = AutonomyInTheLoop
 	}
+	backfillWhatIDs(&b)
 	if err := b.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid board: %w", err)
 	}
 	return &b, nil
+}
+
+// backfillWhatIDs assigns ac1..acN when the LLM wrote string ACs without ids.
+func backfillWhatIDs(b *Board) {
+	if b == nil {
+		return
+	}
+	used := map[string]struct{}{}
+	for _, ac := range b.What {
+		if id := strings.TrimSpace(ac.ID); id != "" {
+			used[id] = struct{}{}
+		}
+	}
+	n := 1
+	for i := range b.What {
+		if strings.TrimSpace(b.What[i].ID) != "" {
+			continue
+		}
+		for {
+			id := fmt.Sprintf("ac%d", n)
+			n++
+			if _, ok := used[id]; ok {
+				continue
+			}
+			b.What[i].ID = id
+			used[id] = struct{}{}
+			break
+		}
+	}
 }
 
 // SaveBoard validates and atomically writes a board.

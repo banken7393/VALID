@@ -151,6 +151,7 @@ func Create(repoRoot, slug string, opts Options) (b *schema.Board, err error) {
 			b.Environment.DevcontainerPath = dcPath
 			if upErr := env.Up(wt); upErr != nil {
 				b.Environment.IsolationWarning = true
+				fmt.Fprintf(os.Stderr, "warning: env up soft-failed: %v\n", upErr)
 			}
 		}
 	} else {

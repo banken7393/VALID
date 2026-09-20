@@ -40,6 +40,13 @@ body {
   animation: rise 600ms ease-out both;
 }
 
+.live-stamp {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .brand {
   margin: 0;
   font-family: var(--font-display);

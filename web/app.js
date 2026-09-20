@@ -1,4 +1,4 @@
-/* VALID dashboard: polls /api/data every 1s (board v2). */
+/* VALID dashboard: polls /api/data every 1s (board + how-it-works.mmd). */
 
 (function () {
   'use strict';
@@ -23,9 +23,35 @@
     findings: document.getElementById('findings'),
     output: document.getElementById('output'),
     error: document.getElementById('error'),
+    liveStamp: document.getElementById('live-stamp'),
   };
 
   let lastDiagram = '';
+  let lastUpdatedAt = '';
+  let mermaidReady = null;
+
+  function waitForMermaid() {
+    if (mermaidReady) {
+      return mermaidReady;
+    }
+    mermaidReady = new Promise((resolve) => {
+      if (window.mermaid) {
+        resolve(window.mermaid);
+        return;
+      }
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (window.mermaid) {
+          clearInterval(timer);
+          resolve(window.mermaid);
+        } else if (Date.now() - started > 15000) {
+          clearInterval(timer);
+          resolve(null);
+        }
+      }, 50);
+    });
+    return mermaidReady;
+  }
 
   async function refresh() {
     try {
@@ -36,10 +62,13 @@
       }
       const data = await res.json();
       els.error.hidden = true;
-      render(data);
+      await render(data);
     } catch (err) {
       els.error.hidden = false;
       els.error.textContent = `Waiting for board: ${err.message}`;
+      if (els.liveStamp) {
+        els.liveStamp.textContent = 'Board unloadable — fix data.json (poll every 1s)';
+      }
     }
   }
 
@@ -63,7 +92,7 @@
     }
   }
 
-  function render(data) {
+  async function render(data) {
     els.feature.textContent = data.feature || '—';
     const life = data.lifecycle || '—';
     els.lifecycle.textContent = life;
@@ -111,24 +140,47 @@
 
     els.output.textContent = tdd.output || 'No test output yet.';
 
-    const diagram = (data.how_it_works || '').trim();
-    if (diagram && diagram !== lastDiagram && window.mermaid) {
-      lastDiagram = diagram;
-      renderMermaid(diagram);
+    const updatedAt = data.updated_at || '';
+    if (els.liveStamp) {
+      const changed = updatedAt && updatedAt !== lastUpdatedAt;
+      lastUpdatedAt = updatedAt;
+      const when = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '—';
+      els.liveStamp.textContent = changed
+        ? `Live · board updated ${when}`
+        : `Live · polling · last board touch ${when}`;
     }
+
+    const diagram = (data.how_it_works || '').trim();
+    if (!diagram) {
+      els.diagram.textContent = '—';
+      lastDiagram = '';
+      return;
+    }
+    if (diagram === lastDiagram) {
+      return;
+    }
+    lastDiagram = diagram;
+    await renderMermaid(diagram);
   }
 
   async function renderMermaid(source) {
+    const mermaid = await waitForMermaid();
     els.diagram.innerHTML = '';
+    if (!mermaid) {
+      els.diagram.textContent = `Mermaid CDN not loaded yet.\n\n${source}`;
+      return;
+    }
     const id = `mmd-${Date.now()}`;
     try {
-      const { svg } = await window.mermaid.render(id, source);
+      const { svg } = await mermaid.render(id, source);
       els.diagram.innerHTML = svg;
     } catch (err) {
       els.diagram.textContent = `Mermaid error: ${err.message}\n\n${source}`;
     }
   }
 
-  refresh();
-  setInterval(refresh, 1000);
+  waitForMermaid().then(() => {
+    refresh();
+    setInterval(refresh, 1000);
+  });
 })();

@@ -3,6 +3,7 @@ package schema
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -25,6 +26,50 @@ func TestNewBoardValidate(t *testing.T) {
 	}
 	if err := b.SetAutonomy("nope"); err == nil {
 		t.Fatal("expected invalid autonomy error")
+	}
+}
+
+func TestAcceptanceCriterionAcceptsStringJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "data.json")
+	body := `{
+  "version": "2",
+  "feature": "x",
+  "mode": "feature",
+  "lifecycle": "spec",
+  "what": [
+    "Applications hold generic dossiers",
+    "ac2: Tipología vive en plantillas",
+    {"id": "ac3", "description": "legal_procedures own the procedure"}
+  ],
+  "phases": [],
+  "tasks": [],
+  "decisions": [],
+  "assumptions": [],
+  "tdd": {"passed": 0, "failed": 0, "total": 0, "cases": []},
+  "audit": {"passed": false, "findings": []},
+  "pending_promotions": [],
+  "environment": {"isolation_warning": false, "database_enabled": false}
+}
+`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := LoadBoard(path)
+	if err != nil {
+		t.Fatalf("LoadBoard: %v", err)
+	}
+	if len(b.What) != 3 {
+		t.Fatalf("what len=%d", len(b.What))
+	}
+	if b.What[0].ID != "ac1" || b.What[0].Description == "" {
+		t.Fatalf("string AC0: %+v", b.What[0])
+	}
+	if b.What[1].ID != "ac2" || !strings.Contains(b.What[1].Description, "Tipología") {
+		t.Fatalf("labeled AC1: %+v", b.What[1])
+	}
+	if b.What[2].ID != "ac3" {
+		t.Fatalf("object AC2: %+v", b.What[2])
 	}
 }
 

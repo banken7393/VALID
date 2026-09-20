@@ -69,10 +69,7 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 }
 
 func enrichHowItWorks(repoRoot string, b *schema.Board) {
-	if b == nil || strings.TrimSpace(b.HowItWorks) != "" {
-		return
-	}
-	if repoRoot == "" || b.Paths.HowItWorks == "" {
+	if b == nil || repoRoot == "" || strings.TrimSpace(b.Paths.HowItWorks) == "" {
 		return
 	}
 	abs, err := schema.ResolveUnderRoot(repoRoot, b.Paths.HowItWorks)
@@ -83,7 +80,11 @@ func enrichHowItWorks(repoRoot string, b *schema.Board) {
 	if err != nil {
 		return
 	}
-	b.HowItWorks = strings.TrimSpace(string(raw))
+	// File on disk is the live source — prefer it over a stale inline board field
+	// so dashboard polls pick up agent edits to how-it-works.mmd.
+	if text := strings.TrimSpace(string(raw)); text != "" {
+		b.HowItWorks = text
+	}
 }
 
 // ListenAndServe starts the HTTP server until it fails.

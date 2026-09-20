@@ -2,204 +2,488 @@
 
 **Visual Agentic Loop for Isolated Development**
 
-VALID is a small, **AI-agnostic** toolkit for shipping software features with coding agents — without letting them trash your host, your main Dev Container, or your shared databases. The method lives in Markdown **skills** and **agents**; a tiny Go CLI does deterministic plumbing (worktrees, quarantine envs, gates, promote, merge); and a **dashboard** gives you a visual read on how far the AI has actually gotten. Your editor of choice is optional wiring, not the product.
+VALID is a small, **AI-agnostic** toolkit for shipping software features with coding agents — without letting them trash your host, your main Dev Container, or your shared databases.
+
+The **method** lives in Markdown **skills** and **agents**.  
+A tiny Go **CLI** does deterministic plumbing (worktrees, quarantine envs, gates, promote, merge).  
+A **dashboard** shows how far the AI has actually gotten — board state, not chat vibes.  
+Your editor is optional wiring, not the product.
+
+```text
+Human → /plan → /spec → /build → /audit → /finish
+              ↑                    ↑
+         board on disk        valid gate
+         + Mermaid            (ACs + real tests)
+              ↑
+         valid dashboard  ←── visual progress
+```
 
 ---
 
 ## Table of contents
 
-1. [Target](#target)
-2. [Why AI-agnostic](#why-ai-agnostic-and-why-that-matters-now)
-3. [Problems VALID solves](#problems-valid-solves)
-4. [Built on Dev Containers](#built-on-dev-containers-not-a-custom-runtime)
-5. [Mental model (four layers)](#mental-model-four-layers)
-6. [What you get](#what-you-get)
-7. [Requirements](#requirements)
-8. [Install the binary](#install-the-binary)
-9. [Set up a consumer project](#set-up-a-consumer-project)
-10. [Usage flows](#usage-flows)
-11. [Board + dashboard (visual progress)](#board--dashboard-visual-progress)
+1. [What VALID is (and is not)](#what-valid-is-and-is-not)
+2. [Who it is for](#who-it-is-for)
+3. [Why AI-agnostic](#why-ai-agnostic)
+4. [Problems it solves](#problems-it-solves)
+5. [Mental model — four layers](#mental-model--four-layers)
+6. [Built on Dev Containers](#built-on-dev-containers)
+7. [Directory map](#directory-map)
+8. [Lifecycle (plan → finish)](#lifecycle-plan--finish)
+9. [The board contract](#the-board-contract)
+10. [Dashboard (visual progress)](#dashboard-visual-progress)
+11. [Gate — proof of done](#gate--proof-of-done)
 12. [Autonomy (in / above the loop)](#autonomy-in--above-the-loop)
-13. [MCP and project scripts](#mcp-and-project-scripts)
-14. [IDE packages](#ide-packages)
-15. [CLI reference](#cli-reference)
-16. [Troubleshooting](#troubleshooting)
+13. [Promote, merge, abandon](#promote-merge-abandon)
+14. [Requirements](#requirements)
+15. [Install the binary](#install-the-binary)
+16. [Set up a consumer project](#set-up-a-consumer-project)
+17. [Config reference](#config-reference)
+18. [Usage flows](#usage-flows)
+19. [Dogfooding from another Dev Container](#dogfooding-from-another-dev-container)
+20. [How to verify it worked](#how-to-verify-it-worked)
+21. [MCP and project scripts](#mcp-and-project-scripts)
+22. [IDE packages](#ide-packages)
+23. [CLI reference](#cli-reference)
+24. [Troubleshooting](#troubleshooting)
+25. [FAQ](#faq)
+26. [License](#license)
 
 ---
 
-## Target
+## What VALID is (and is not)
 
-Teams (or solo developers) who already use AI coding agents and need:
+| VALID **is** | VALID **is not** |
+|--------------|------------------|
+| A **repeatable method** (skills you invoke) | A chat plugin that auto-runs itself |
+| A **progress contract** on disk (the board) | “Trust me, it’s done” in the transcript |
+| **Mechanical gates** (AC coverage + live tests) | Honor-system checkboxes |
+| **Quarantine** via git worktree + Dev Containers | A proprietary sandbox runtime |
+| **AI-agnostic** plumbing + Markdown | Locked to one model or one IDE |
+| Optional Cursor / Claude / OpenCode / Codex adapters | Dependent on those hosts |
 
-- a **repeatable method** (plan → spec → build → audit → finish), not a one-off chat ritual
+If you can run `valid` and open a chat that follows `.valid/skills/`, you can use VALID — even from a plain terminal.
+
+---
+
+## Who it is for
+
+Teams or solo developers who already use AI coding agents and need:
+
+- a **repeatable loop** (plan → spec → build → audit → finish), not a one-off ritual
 - **isolation** so experiments do not pollute the machine or the stable project environment
-- a **durable contract of progress** the model must keep honest (ACs, tasks, TDD evidence, Mermaid) — and a **visual dashboard** so you can see implementation state without digging through chat
-- **proof of done** that is mechanical (AC↔task coverage + real test runs), not vibes
-- **searchable project knowledge** that survives the chat window (RAG over `.valid/knowledge/`)
+- a **durable contract of progress** the model must keep honest (ACs, tasks, TDD, Mermaid)
+- a **visual dashboard** so you can see implementation state without scrolling chat
+- **proof of done** that is mechanical, not vibes
+- **searchable project knowledge** that survives the chat window
 - freedom to **change models and IDEs** without rewriting the workflow
 
-VALID is **meant** to work well inside VS Code and forks such as Cursor (skills panels, MCP, project rules) — and equally on Claude Code, OpenCode, Codex, or a plain terminal + any agent that can read Markdown and call a CLI. None of those hosts are required. If you can run `valid` and open a chat that follows `.valid/skills/`, you can use VALID.
+VALID is **meant** to work well inside VS Code and forks such as Cursor — and equally on Claude Code, OpenCode, Codex, or terminal + any agent that reads Markdown and can call a CLI.
 
 ---
 
-## Why AI-agnostic (and why that matters now)
+## Why AI-agnostic
 
-AI tooling churns fast: new models, new IDEs, new “agent” products every month. A workflow that only exists as a proprietary plugin dies when you switch. VALID keeps the **method and the contract** in your repo (skills, agents, board JSON, knowledge corpus) and keeps the **CLI** as boring plumbing. Swap Cursor for Claude Code, or GPT for Claude — the loop stays the same. IDE packages under `packages/` are thin adapters; `valid install` copies them. The product is not the adapter.
+AI tooling churns fast: new models, new IDEs, new “agent” products every month. A workflow that only exists as a proprietary plugin dies when you switch.
+
+VALID keeps the **method and the contract in your repo**:
+
+- skills and agents under `.valid/`
+- board JSON + Mermaid per feature
+- knowledge corpus under `.valid/knowledge/`
+
+The **CLI** stays boring plumbing. Swap Cursor for Claude Code, or GPT for Claude — the loop stays the same. Packages under `packages/` are thin adapters; `valid install` copies them. **The product is not the adapter.**
 
 ---
 
-## Problems VALID solves
+## Problems it solves
 
-AI coding agents are powerful and also reliably create expensive messes:
-
-| Problem | What goes wrong without VALID | What VALID does |
-|---------|-------------------------------|-----------------|
-| **Host pollution** | Global `npm i -g`, apt packages, toolchain upgrades, caches on your daily machine | Feature work runs in a **quarantined Dev Container** on a git worktree |
-| **Shared env drift** | Agents edit the project’s principal `.devcontainer/` / stack before the change is proven | Feature DC only under `.valid/worktrees/<slug>/`; **promote env** is fail-hard into the existing principal DC |
-| **Dirty data stores** | Tests and migrations hit the primary DB and leave it inconsistent | Feature DB **off by default**; optional recipe; soft isolation warnings |
-| **Opaque “done”** | “It works” with no ACs, no coverage, no suite evidence | Dual **gate**: every AC covered by a task **and** `test_command` executed green |
+| Problem | Without VALID | With VALID |
+|---------|---------------|------------|
+| **Host pollution** | Global installs, toolchain upgrades on your daily machine | Feature work in a **quarantined Dev Container** on a git worktree |
+| **Shared env drift** | Agents edit the principal `.devcontainer/` before the change is proven | Feature DC only under `.valid/worktrees/<slug>/`; **promote env** is fail-hard |
+| **Dirty data stores** | Tests/migrations hit the primary DB | Feature DB **off by default**; optional recipe; isolation warnings |
+| **Opaque “done”** | “It works” with no ACs or suite evidence | Dual **gate**: every AC covered by a task **and** `test_command` green |
 | **Knowledge amnesia** | Decisions die in chat | Fragmented knowledge + MCP RAG; promote only what clears a high bar |
-| **IDE / vendor lock-in** | Workflow lives only in one plugin | Skills + CLI + optional adapters; terminal-first always works |
-| **Autonomous chaos** | Agent streams for an hour and invents scope | Default **in the loop**; optional **above the loop** + **delegate** agent for bounded chunks |
+| **IDE lock-in** | Workflow lives in one plugin | Skills + CLI + optional adapters; terminal-first always works |
+| **Autonomous chaos** | Agent streams for an hour and invents scope | Default **in the loop**; optional **above the loop** + **delegate** for bounded chunks |
 
 ---
 
-## Built on Dev Containers (not a custom runtime)
-
-VALID’s isolation story is deliberately grounded in the open **[Dev Containers](https://containers.dev/)** ecosystem (Docker + `devcontainer.json`, and optionally the [Dev Containers CLI](https://github.com/devcontainers/cli)). We did not invent a parallel “agent sandbox” format.
-
-**Why Dev Containers**
-
-- They already solve “reproducible, containerized development environments” for VS Code, Cursor, Codespaces, and CLI workflows.
-- Teams often **already** have a principal `.devcontainer/` — VALID treats that as sacred and never invents one for you.
-- The same JSON/Dockerfile vocabulary your humans use for day-to-day work is what the agent uses in quarantine, so promote-back is reviewable, not magical.
-
-**How VALID uses them**
-
-| Layer | Where | Role |
-|-------|--------|------|
-| **Principal Dev Container** | Project `.devcontainer/` (yours) | Stable daily environment. VALID **never creates** this; `promote env` only merges safe deltas into it (fail hard on doubt). |
-| **Feature quarantine DC** | `.valid/worktrees/<slug>/.devcontainer/` | Ephemeral env for one feature: cloned from the principal when present, otherwise a VALID quarantine template (language via `BASE_IMAGE`). Unique container name (`valid-<slug>`), ports remapped so they do not steal the principal’s host ports. |
-| **Git worktree** | `.valid/worktrees/<slug>/` | File/branch isolation (`feature/<slug>`) cut from the principal folder’s current branch — paired with the feature DC so code + runtime stay together. |
-| **Docker-outside-of-Docker** | Feature DC `features` / Docker socket | Lets the feature env use Docker when your stack needs it, without baking a second opaque runtime into VALID. |
-
-**Soft by design if Docker/Dev Containers CLI is missing:** VALID still scaffolds the board and worktree and records an isolation warning. Full quarantine needs Docker + Dev Containers; `minipatch` deliberately skips worktree/DC for tiny edits (same gates, no quarantine).
-
-So: VALID is a **method + board + plumbing** layer **on top of** Dev Container tech — not a replacement for it.
-
----
-
-## Mental model (four layers)
+## Mental model — four layers
 
 Do not confuse these:
 
 | Layer | What it is | What it is not |
 |-------|------------|----------------|
-| **Skill** | Markdown procedure under `.valid/skills/` you invoke in chat (`/plan`, `/build`, …). Orchestrates dialogue, **edits the board**, and decides when to call CLI/MCP/agents. | Not a CLI subcommand. Not auto-run by the model (`disable-model-invocation: true`). |
+| **Skill** | Markdown procedure under `.valid/skills/` you invoke in chat (`/plan`, `/build`, …). Orchestrates dialogue, **edits the board**, and decides when to call CLI / MCP / agents. | Not a CLI subcommand. Not auto-run (`disable-model-invocation: true`). |
 | **Agent** | Role prompt under `.valid/agents/` (`interviewer`, `developer`, `reviewer`, `delegate`). A skill may invoke it for focused work. | Not the full method by itself. |
-| **CLI** (`valid`) | Deterministic scaffolding: feature/worktree/DC, gate, promote, merge, env, dashboard, install. | Does not dialog. There is no product UX of `valid plan` / `valid build`. |
+| **CLI** (`valid`) | Deterministic scaffolding: feature / worktree / DC, gate, promote, merge, env, dashboard, install. | Does not dialog. There is no product UX of `valid plan` / `valid build`. |
 | **MCP** (`valid mcp`) | Knowledge RAG + optional project script tools. | Never mutates boards / TDD / ACs. |
 
 ```text
 You (human)
   └─► Skill (e.g. /build)
         ├─► Agent role (developer / delegate / …)
-        ├─► edits ──► .valid/features/<slug>/ (progress contract)
+        ├─► edits ──► .valid/features/<slug>/   (progress contract)
         ├─► CLI valid …  ──► worktree / DC / gate / promote / merge / dashboard
         └─► MCP tools    ──► .valid/knowledge/** + .valid/scripts/**
 ```
 
-Open `valid dashboard --feature <slug>` anytime to **see** that progress visually (lifecycle, autonomy, ACs, tasks, tests, Mermaid, gate).
+Open `valid dashboard --feature <slug>` anytime to **see** that progress visually.
 
 ---
 
-## What you get
+## Built on Dev Containers
 
-| Piece | Role |
-|-------|------|
-| **Skills** | `plan`, `spec`, `build`, `audit`, `finish`, `patch`, `minipatch`, `delegate` |
-| **Agents** | `interviewer`, `developer`, `reviewer`, `delegate` |
-| **Autonomy** | Board `autonomy`: `in_the_loop` (default) \| `above_the_loop` |
-| **Board + dashboard** | Machine-readable progress under `.valid/features/<slug>/`; **`valid dashboard`** is the visual way to inspect AI implementation state |
-| **CLI** | Scaffold, gate, promote, merge, env, dashboard, install |
-| **MCP** | Knowledge RAG + project scripts |
-| **IDE install** | Optional adapters for Cursor / Claude Code / OpenCode / Codex |
+VALID’s isolation story is grounded in the open **[Dev Containers](https://containers.dev/)** ecosystem (Docker + `devcontainer.json`, optionally the [Dev Containers CLI](https://github.com/devcontainers/cli)). We did not invent a parallel “agent sandbox” format.
 
-Language-agnostic: set `test_command` (`npm test`, `go test ./...`, `pytest`, …). VALID records results; it does not own your runner.
+**Why**
+
+- Teams often **already** have a principal `.devcontainer/` — VALID treats it as sacred and never invents one for you.
+- The same JSON / Dockerfile vocabulary humans use day-to-day is what the agent uses in quarantine, so promote-back is reviewable, not magical.
+
+| Layer | Where | Role |
+|-------|--------|------|
+| **Principal Dev Container** | Project `.devcontainer/` (yours) | Stable daily environment. VALID **never creates** this. `promote env` only merges safe deltas (fail hard on doubt). |
+| **Feature quarantine DC** | `.valid/worktrees/<slug>/.devcontainer/` | Ephemeral env for one feature: cloned from the principal when present, otherwise a VALID quarantine template. Container name `valid-<slug>`; ports remapped so they do not steal the principal’s host ports. |
+| **Git worktree** | `.valid/worktrees/<slug>/` | Branch `feature/<slug>`, cut from the principal folder’s current branch (`environment.base_branch`). |
+| **Docker-outside-of-Docker** | Feature (and ideally principal) DC | Needed to start feature containers **from inside** an already-running Dev Container. |
+
+**Soft by design** if Docker / `devcontainer` CLI is missing: VALID still scaffolds the board and worktree and sets `isolation_warning`. Full quarantine needs Docker + Dev Containers CLI (`@devcontainers/cli`). **Minipatch** deliberately skips worktree/DC for tiny edits (same gates, no quarantine).
+
+So: VALID is a **method + board + plumbing** layer **on top of** Dev Container tech — not a replacement for it.
+
+---
+
+## Directory map
+
+After `valid init` (and creating a feature):
+
+```text
+your-project/
+├── .devcontainer/                 # PRINCIPAL — yours; VALID never invents this
+├── .valid/
+│   ├── config.json                # test_command, ports, isolation, database…
+│   ├── skills/                    # plan, spec, build, audit, finish, patch, minipatch, delegate
+│   ├── agents/                    # interviewer, developer, reviewer, delegate
+│   ├── knowledge/                 # RAG corpus (architecture, conventions, decisions…)
+│   ├── scripts/                   # optional MCP tools (meta.json + runner)
+│   ├── features/<slug>/
+│   │   ├── data.json              # THE board (progress contract)
+│   │   ├── how-it-works.mmd       # Mermaid (required past plan for feature/patch)
+│   │   └── workspace/             # deps-delta, gotchas, env-promote-todo…
+│   └── worktrees/<slug>/          # git worktree + feature .devcontainer/ (not minipatch)
+├── .cursor/                       # after `valid install cursor` (skills, MCP, rules)
+└── valid                          # optional: copied release binary
+```
+
+**Cursor / IDE worktrees** under `~/.cursor/worktrees/…` are **not** VALID. Only `.valid/worktrees/<slug>/` is the feature quarantine.
+
+---
+
+## Lifecycle (plan → finish)
+
+Every feature board has a `lifecycle` field. Skills move it forward; the gate and merge respect it.
+
+| Lifecycle | Intent | Typical skill |
+|-----------|--------|----------------|
+| `plan` | Shape, assumptions, Mermaid mechanism | `/plan` |
+| `spec` | Measurable acceptance criteria (`what[]`) | `/spec` |
+| `build` | Decisions, tasks/`covers`, TDD in quarantine | `/build`, `/delegate` |
+| `audit` | Review + mechanical gate | `/audit` |
+| `finish` | Promote → merge → teardown | `/finish` |
+| `done` | Merged; board usually deleted | (terminal) |
+
+```mermaid
+flowchart LR
+  plan --> spec --> build --> audit --> finish --> done
+  audit -->|red| build
+```
+
+**Modes** (`feature` | `patch` | `minipatch`) change how much quarantine you get — not whether gates apply.
+
+| Mode | Worktree + feature DC | When |
+|------|----------------------|------|
+| `feature` | Yes | New / unclear behaviour (canonical) |
+| `patch` | Yes | Small but still quarantined |
+| `minipatch` | No (`isolation_warning` expected) | Typo-level / obvious tiny fix |
+
+---
+
+## The board contract
+
+The board is the **source of truth**. The LLM edits it with file tools. The dashboard and gate **read** it. Chat is not the status page.
+
+### Paths that matter
+
+| Path | Role |
+|------|------|
+| `.valid/features/<slug>/data.json` | Machine-readable contract |
+| `.valid/features/<slug>/how-it-works.mmd` | Mermaid mechanism drawing (**this** path — not under `workspace/`) |
+| `.valid/worktrees/<slug>/` | Where code for the feature lives |
+
+### Canonical JSON shapes (write these)
+
+Wrong shapes make `valid dashboard` / `valid gate` fail to load the board (`Board unloadable`). Prefer these exact keys:
+
+```json
+{
+  "what": [
+    { "id": "ac1", "description": "User can reset password via email link" }
+  ],
+  "phases": [
+    { "id": "p1", "title": "Core reset flow", "order": 1 }
+  ],
+  "tasks": [
+    { "id": "t1", "title": "Add reset token model", "status": "pending", "covers": ["ac1"] }
+  ],
+  "decisions": [
+    { "id": "D1", "title": "Token TTL", "detail": "15 minutes; single use" }
+  ],
+  "assumptions": [
+    { "id": "A1", "detail": "SMTP already configured in staging. Breaks if wrong: need mailer spike first." }
+  ],
+  "environment": {
+    "isolation_warning": false
+  }
+}
+```
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `north_star` | string | Outcome of the whole feature |
+| `what[]` | `{id, description}` | Acceptance criteria — **not** a string array |
+| `tasks[].covers` | string[] | Must reference `what[].id` |
+| `tasks[].status` | `pending` \| `doing` \| `done` | |
+| `decisions[]` | `{id, title, detail?}` | Prefer `title`/`detail`, not `text` |
+| `assumptions[]` | `{id, detail}` | Put “breaks if wrong” inside `detail` |
+| `autonomy` | `in_the_loop` \| `above_the_loop` | Default `in_the_loop` |
+| `environment.isolation_warning` | **boolean** | Not a prose string |
+| `environment.base_branch` | string | Branch the worktree was cut from (merge target) |
+| `tdd` | aggregates + `cases[]` | Gate live-run replaces suite evidence |
+| `how_it_works` / `.mmd` | Mermaid | File on disk wins for the dashboard |
+
+The loader is **somewhat** tolerant of common LLM mistakes (string `what`, `text` on decisions, stringy `isolation_warning`), but skills and knowledge teach the **canonical** shapes — write those.
+
+### Who writes what
+
+| Actor | Writes | Does not |
+|-------|--------|----------|
+| **LLM** (via skills) | `data.json`, `.mmd`, code in worktree, knowledge candidates | Invent principal `.devcontainer/` |
+| **CLI** | Scaffold board/worktree/DC; gate results; merge/teardown | Dialog / invent ACs |
+| **MCP** | Knowledge search / optional scripts | Boards, TDD, ACs |
+| **Dashboard** | Nothing (read-only UI) | |
+
+Optional helpers: `valid board`, `valid task`, `valid report` — power users only; prefer editing JSON.
+
+---
+
+## Dashboard (visual progress)
+
+Chat is a terrible status page. The dashboard is the intended way to **watch AI implementation progress**.
+
+```bash
+valid dashboard --feature my-feature
+# → http://127.0.0.1:7432   (or dashboard_port from config)
+```
+
+- Polls `/api/data` about every second (`data.json` + `how-it-works.mmd`).
+- Shows lifecycle, autonomy, isolation, ACs, phases, Mermaid, tasks, decisions, assumptions, promotions, tests, gate findings.
+- Does **not** start automatically on `init` / `install` / `feature new` — run it when you want the live view.
+- Forward port `7432` (or your config port) from the Dev Container if you browse from the host.
+
+If you see **Board unloadable**, `data.json` failed to parse — fix shapes (see [board contract](#the-board-contract)) or `curl -s http://127.0.0.1:7432/api/data` for the error.
+
+Neither the dashboard nor MCP HTTP is a background daemon of `valid install`. MCP over **stdio** is started by the IDE when configured.
+
+---
+
+## Gate — proof of done
+
+```bash
+valid gate <slug>
+```
+
+By default the gate:
+
+1. Runs `config.test_command` in the **feature worktree** (or repo root for minipatch).
+2. Refuses to fall back to the principal tree if the worktree path is missing (hard error).
+3. Replaces board TDD suite evidence with the live run result (stale pending/fail cases cannot veto a green suite).
+4. Checks AC ↔ task `covers`, Mermaid quality (feature/patch past `plan`), and records `audit` on the board.
+
+| Finding (examples) | Meaning |
+|--------------------|---------|
+| `ac_uncovered` | An AC id has no task covering it |
+| `no_tests` / `tests_not_green` | Suite missing or red |
+| `how_it_works_missing` / `_stub` / `_invalid` | Mermaid absent, scaffold stub, or not Mermaid |
+| `worktree_missing` | Feature/patch worktree gone or empty path |
+| `isolation_warning` | Soft (unless `isolation.strict`) — expected for minipatch |
+
+`--trust-board` skips executing `test_command` and only inspects board evidence (tests / CI helpers — not the product default for features).
+
+---
+
+## Autonomy (in / above the loop)
+
+| Mode | Behaviour |
+|------|-----------|
+| `in_the_loop` (**default**) | Human present on **every** task |
+| `above_the_loop` | Stream **trivial** tasks; stop on real decisions, new ACs, secrets, phase boundaries, friction |
+| `/delegate` | Skill + `delegate` agent: explicit chunk boundary + stop report; still ends in audit/finish |
+
+```bash
+valid board set my-feature --autonomy above_the_loop
+valid board set my-feature --autonomy in_the_loop
+```
+
+Delegate never skips audit/finish. Autonomy is about **how noisy** build is — not about skipping proof.
+
+---
+
+## Promote, merge, abandon
+
+### Promote knowledge
+
+```bash
+valid promote knowledge <slug> [--dry-run]
+```
+
+Copies only what clears a high bar into `.valid/knowledge/` (stable, cross-feature, non-obvious). Skills decide *what* is worth promoting; CLI does the copy.
+
+### Promote env (fail-hard)
+
+```bash
+valid promote env <slug> [--dry-run]
+```
+
+Merges **safe** deltas from the feature Dev Container into the **existing** principal `.devcontainer/`. If the principal is missing, the Dockerfile is opaque, or a change is doubtful → **fail hard**, write `workspace/env-promote-todo.md`, and **do not merge**.
+
+### Merge
+
+```bash
+valid merge <slug>
+```
+
+Merges `feature/<slug>` into `environment.base_branch` (the branch recorded when the worktree was created — not a hard-coded `main`). Order: **merge first**, then tear down the feature container. Refuses early lifecycles unless `--allow-early`.
+
+### Abandon (“nah, no me mola”)
+
+```bash
+valid feature delete <slug>
+```
+
+No merge. Tears down container (if any), removes worktree + branch, deletes the board.
+
+| Command | Effect |
+|---------|--------|
+| `valid feature delete <slug>` | Board + worktree + DC gone |
+| `valid feature delete <slug> --keep-env` | Board only |
+| `valid env down <slug>` | Container + worktree gone; board kept |
 
 ---
 
 ## Requirements
 
-- Go 1.22+ (to build VALID)
-- Git
-- Optional: Docker + [Dev Containers CLI](https://github.com/devcontainers/cli)
-- Optional: VS Code / Cursor / Claude Code / OpenCode / Codex — **not required**
+| Need | For |
+|------|-----|
+| **Git** | Always |
+| **VALID binary** | Always (`make build` / `make dist` / release artifact) |
+| **Go 1.22+** | Only to *compile* VALID from source |
+| **Docker** + **Dev Containers CLI** | Full feature quarantine (`env up`) |
+| **docker-outside-of-docker** (or Docker socket) in the **principal** DC | Starting feature DCs from inside a Dev Container |
+| VS Code / Cursor / Claude / OpenCode / Codex | Optional |
 
 ---
 
 ## Install the binary
 
+### Build from source (this machine / VALID Dev Container)
+
 ```bash
 git clone <this-repo>
 cd VALID
-make build                 # this machine / Dev Container → bin/valid
+make build                 # → bin/valid
 export PATH="$PWD/bin:$PATH"
 valid --help
 ```
 
-Cross-compile for distribution (no local Go needed for consumers):
+### Cross-compile for distribution
 
 ```bash
-make dist                  # linux (amd64+arm64), windows/amd64, darwin (amd64+arm64)
+make dist                  # linux amd64+arm64, windows/amd64, darwin amd64+arm64
 # or one target:
-make build-linux           # → bin/valid-linux-amd64  (Dev Container / WSL default)
+make build-linux           # → bin/valid-linux-amd64   (typical Dev Container / WSL)
 make build-windows         # → bin/valid-windows-amd64.exe
+make build-darwin
 ```
 
-Attach the `bin/valid-*` artifacts to a GitHub Release. Consumers copy the matching binary into their project (e.g. `./valid`) and run it — no compile step.
+Attach `bin/valid-*` to a GitHub Release. Consumers copy the matching binary into their project (e.g. `./valid`) — **no compile step**, no global PATH required.
+
+```bash
+make clean-bin             # remove built artifacts
+```
 
 ---
 
 ## Set up a consumer project
 
 ```bash
-cd /path/to/your-project
+cd /path/to/your-project   # must be a git repo
 valid init
-# optional IDE wiring — skip if you only use terminal + any agent:
-valid install cursor          # or: claude | opencode | codex | all
+valid install cursor       # optional: claude | opencode | codex | all
 ```
 
-1. **`valid init`** — seeds `.valid/` (config, skills, agents, knowledge, scripts).
-2. **`valid install <ide>`** — publishes skills into that host’s skill tree + MCP/rules. Re-run after upgrading VALID.
+1. **`valid init`** — seeds `.valid/` (config, skills, agents, knowledge, scripts). Re-running refreshes skills/agents without wiping your config.
+2. **`valid install <ide>`** — publishes skills into that host’s skill tree + MCP / rules. Re-run after upgrading VALID (`--force` to overwrite adapter files).
 
-Edit `.valid/config.json` at least:
+Then set at least `test_command` in `.valid/config.json` (see [config reference](#config-reference)).
+
+If you want **promote env** later, ensure a principal `.devcontainer/` already exists.
+
+---
+
+## Config reference
+
+`.valid/config.json` (defaults shown conceptually):
 
 ```json
 {
-  "test_command": "npm test",
+  "version": 2,
+  "test_command": "go test ./...",
   "dashboard_port": 7432,
   "mcp_http_port": 7433,
   "feature_dashboard_port": 0,
-  "feature_port_offset": 100
+  "feature_port_offset": 100,
+  "main_devcontainer": ".devcontainer/devcontainer.json",
+  "scripts_root": ".valid/scripts",
+  "language": "repo",
+  "isolation": { "strict": false },
+  "database": { "enabled": false, "recipe": "" },
+  "mcp": { "knowledge_root": ".valid/knowledge" }
 }
 ```
 
 | Key | Meaning |
 |-----|---------|
-| `test_command` | How this repo runs its suite (`valid gate` executes it) |
-| `dashboard_port` | `valid dashboard` — visual progress UI (loopback) |
+| `test_command` | Suite command; **`valid gate` executes it** |
+| `dashboard_port` | `valid dashboard` listen port (loopback) |
 | `mcp_http_port` | `valid mcp --http` |
-| `feature_dashboard_port` | Base for feature DC ports (each slug salted); `0` → `dashboard_port + feature_port_offset` |
-| `scripts_root` | MCP script nodes (default `.valid/scripts`) |
-| `main_devcontainer` | Path to principal DC JSON (default `.devcontainer/devcontainer.json`) |
-| `database.enabled` | Default `false` — do not touch the principal DSN from feature work |
+| `feature_dashboard_port` | Base for feature DC host ports; `0` → `dashboard_port + feature_port_offset` (+ slug salt) |
+| `feature_port_offset` | Offset used when auto-deriving feature ports |
+| `main_devcontainer` | Principal DC JSON path (never invented) |
+| `scripts_root` | MCP script nodes |
+| `language` | Board prose: `repo` = match the repository language, or `en` / `es` / … |
+| `isolation.strict` | If `true`, isolation warnings fail the gate (minipatch soft isolation is exempt) |
+| `database.enabled` | Default `false` — do not use the principal DSN from feature work |
+| `database.recipe` | How to start an ephemeral DB for features |
+| `mcp.knowledge_root` | Knowledge corpus root |
 
 ---
 
 ## Usage flows
 
-Skills are **manual**. Invoke them explicitly in chat (e.g. `/plan`). The model will not auto-pick them.
+Skills are **manual**. Invoke them explicitly (e.g. `/plan`). The model will not auto-pick them.
 
 ### Flow map
 
@@ -229,11 +513,11 @@ flowchart TD
 cd /path/to/your-project
 valid init
 valid install cursor          # optional
-# set test_command in .valid/config.json
+# edit .valid/config.json → test_command
 # ensure principal .devcontainer/ exists if you want promote env later
 ```
 
-Then open chat and follow skills under `.valid/skills/` (or the IDE copies from `valid install`).
+Open chat and follow skills under `.valid/skills/` (or the IDE copies from `valid install`).
 
 ### B — Full feature (canonical)
 
@@ -241,33 +525,26 @@ Goal: new behaviour with quarantine, ACs, TDD, review, promote, merge.
 
 | Step | You invoke | What happens |
 |------|------------|--------------|
-| 1 | `/plan my-feature` | Interview → Mermaid how-it-works → `valid feature new` → worktree + feature DC. Board at `.valid/features/my-feature/`. |
-| 2 | `/spec` | Measurable `what[]` ACs + `phases[]` (`interviewer`). LLM edits the board. |
+| 1 | `/plan my-feature` | Interview → Mermaid → `valid feature new` → worktree + feature DC. Board at `.valid/features/my-feature/`. |
+| 2 | `/spec` | Measurable `what[]` + optional `phases[]` (`interviewer`). |
 | 3 | `/build` | Decisions + tasks with `covers` → TDD in quarantine (`developer`). Default `in_the_loop`. |
-| 3b | `/delegate` (optional) | Bounded chunk with `above_the_loop` (`delegate` agent). Same gates. |
-| 4 | `/audit` | `reviewer` + `valid gate` (AC↔task **and** live `test_command`). Fix and re-audit if red. |
-| 5 | `/finish` | Promote knowledge (sparingly) → fail-hard promote env → merge into recorded principal branch → delete board → tear down env. |
+| 3b | `/delegate` (optional) | Bounded chunk with `above_the_loop`. Same gates. |
+| 4 | `/audit` | `reviewer` + `valid gate`. Fix and re-audit if red. |
+| 5 | `/finish` | Promote knowledge (sparingly) → fail-hard promote env → merge into recorded base branch → delete board → tear down env. |
 
-**Plumbing the same path by hand** (skills normally call these):
+**Same path by hand** (skills normally call these):
 
 ```bash
 valid feature new my-feature --north-star "Users can reset password"
-# …agent edits data.json + how-it-works.mmd + code in .valid/worktrees/my-feature/…
+# agent edits data.json + how-it-works.mmd + code under .valid/worktrees/my-feature/
+valid dashboard --feature my-feature
 valid gate my-feature
 valid promote knowledge my-feature
-valid promote env my-feature          # fail hard if principal DC missing / opaque delta
-valid merge my-feature                # downs container, merges, removes worktree
-valid feature delete my-feature       # if board still present
+valid promote env my-feature
+valid merge my-feature
 ```
 
-**See progress while the agent works** (do not rely on chat alone):
-
-```bash
-valid dashboard --feature my-feature
-# open http://127.0.0.1:<dashboard_port> — lifecycle, ACs, tasks, tests, Mermaid, gate findings
-```
-
-**Abort rules on finish:** if `promote env` fails, **do not** merge and **do not** delete the board. Fix the todo under `workspace/env-promote-todo.md` and re-run.
+**Abort rule on finish:** if `promote env` fails → **do not** merge and **do not** delete the board. Fix `workspace/env-promote-todo.md` and re-run.
 
 ```mermaid
 sequenceDiagram
@@ -293,16 +570,16 @@ sequenceDiagram
 
 Use when there **is** precedent in code, scope is small, but you still want worktree + DC.
 
-1. `/patch <slug>` — short `what[]` / tasks, then same build → audit → finish discipline as a feature.
-2. Same gates: AC coverage + green tests. No relaxed “it’s tiny” escape hatch.
+1. `/patch <slug>` — short `what[]` / tasks, then same build → audit → finish discipline.
+2. Same gates: AC coverage + green tests. No “it’s tiny” escape hatch.
 
 ### D — Minipatch (tiny change, no quarantine)
 
 Use for typo-level / obvious one-file fixes when isolation is overkill.
 
-1. `/minipatch <slug>` — ephemeral board, **no** worktree/DC (`isolation_warning` expected).
-2. Still: ACs, tasks/`covers`, `test_command` evidence, `valid gate`.
-3. Commit on the current branch; no `valid merge` of a feature branch. Delete the board when done (`valid feature delete` or finish path for minipatch).
+1. `/minipatch <slug>` — board only; **no** worktree/DC (`isolation_warning` expected).
+2. Still: ACs, tasks/`covers`, `valid gate`.
+3. Commit on the current branch; no `valid merge`. Delete the board when done (`valid feature delete`).
 
 ### E — Above the loop / delegate
 
@@ -319,23 +596,17 @@ flowchart LR
   human --> build
 ```
 
-```bash
-valid board set my-feature --autonomy above_the_loop
-# …or invoke /delegate with a phase id / task range…
-valid board set my-feature --autonomy in_the_loop
-```
-
-Rules: stream **trivial** work only; stop on architecture, new ACs, secrets, failing suite you cannot fix inside the chunk. Delegate never skips audit/finish.
+Rules: stream **trivial** work only; stop on architecture, new ACs, secrets, failing suite you cannot fix inside the chunk.
 
 ### F — Knowledge + scripts during work
 
 ```bash
 valid mcp                 # stdio — IDE install points here
 # In chat: search_knowledge / get_document / upsert_document
-# Plus any tools from .valid/scripts/<id>/meta.json
+# Plus tools from .valid/scripts/<id>/meta.json
 ```
 
-HTTP (loopback + token; scripts off by default):
+HTTP (loopback + token; scripts off by default on HTTP):
 
 ```bash
 export VALID_MCP_TOKEN='long-random-secret'
@@ -346,57 +617,81 @@ valid mcp --http --addr 127.0.0.1:7433
 
 | Situation | Flow |
 |-----------|------|
-| New feature / unclear shape | **B — Full feature** (`/plan` … `/finish`) |
+| New feature / unclear shape | **B — Full feature** |
 | Small change, want isolation | **C — Patch** |
 | Tiny fix, isolation optional | **D — Minipatch** |
 | Tired of confirming every trivial task | **E — Delegate / above_the_loop** (still finish with audit) |
 | Env delta proved in quarantine | Stay on **B**; let `/finish` promote env (or fail-hard) |
+| Started a feature and want it gone | **H — Abandon** |
 
----
-
-## Board + dashboard (visual progress)
-
-Chat is a terrible status page. VALID keeps a **per-feature contract on disk** that the AI must update as it works, and a **dashboard** so you can visually check how far implementation has really gone — without scrolling transcripts or trusting “done” in prose.
-
-**On disk (source of truth the model edits):**
-
-```text
-.valid/features/<slug>/
-  data.json           # ACs, phases, tasks/covers, TDD, audit, autonomy, env…
-  how-it-works.mmd    # Mermaid (required past plan for feature/patch)
-  workspace/
-    deps-delta.md
-    gotchas.md        # optional
-    env-promote-todo.md  # written on promote env failure
-.valid/worktrees/<slug>/   # git worktree + feature .devcontainer/ (not for minipatch)
-```
-
-**On screen (`valid dashboard`):** a loopback HTTP UI that polls the board and shows lifecycle, autonomy, acceptance criteria, tasks, decisions, test evidence, Mermaid how-it-works, and gate findings. That is the intended way to **watch AI implementation progress**.
+### H — Abandon a feature
 
 ```bash
-valid dashboard --feature my-feature
-# http://127.0.0.1:<dashboard_port from config>
+valid feature delete <slug>
 ```
 
-Important board fields: `north_star`, `what[]`, `phases[]`, `tasks[]` + `covers`, `decisions[]`, `assumptions[]`, `tdd`, `audit`, `environment` (incl. `base_branch`), `autonomy`, `pending_promotions[]`.
-
-The **LLM** is the primary writer of the board files. CLI `board` / `task` / `report` are optional helpers. The **dashboard** is read-only visualization of that state.
+See [Promote, merge, abandon](#promote-merge-abandon).
 
 ---
 
-## Autonomy (in / above the loop)
+## Dogfooding from another Dev Container
 
-| Mode | Behaviour |
-|------|-----------|
-| `in_the_loop` (default) | Human present on **every** task |
-| `above_the_loop` | Stream trivial tasks; stop on real decisions / phase boundaries / friction |
-| `/delegate` | Skill + `delegate` agent: explicit chunk boundary + stop report |
+Each Dev Container only sees **its** workspace. Putting VALID on `PATH` inside the VALID repo does not help the other project.
+
+**Recommended:** copy a release / cross-compiled binary into the consumer repo:
+
+```bash
+# in VALID
+make build-linux    # or make dist
+cp bin/valid-linux-amd64 /path/to/other-project/valid
+
+# in the other project container
+chmod +x ./valid
+./valid init
+./valid install cursor
+./valid feature new demo --north-star "…"
+./valid dashboard --feature demo
+```
+
+For feature quarantine **from inside** that project’s DC you typically need:
+
+1. `docker-outside-of-docker` (or Docker socket) in the **principal** `.devcontainer/`
+2. `devcontainer` CLI on PATH (`npm i -g @devcontainers/cli`)
+3. Then `./valid env up <slug>` — the real error prints here (unlike a soft warning on `feature new`)
+
+SSH for `git@…` remotes: mount host `~/.ssh` into the Dev Container (read-only is fine).
+
+---
+
+## How to verify it worked
+
+```bash
+# Board exists
+ls .valid/features/<slug>/
+./valid board show <slug>
+
+# Worktree exists (feature/patch)
+ls .valid/worktrees/<slug>/
+git worktree list
+# expect: .../.valid/worktrees/<slug>  ... [feature/<slug>]
+
+# Dashboard loads board (not "Board unloadable")
+./valid dashboard --feature <slug>
+curl -s http://127.0.0.1:7432/api/data | head
+
+# Gate can at least load + run policy
+./valid gate <slug>
+```
+
+Ignore Cursor’s `~/.cursor/worktrees/…` entries (often `prunable`) — those are IDE agent sandboxes, not VALID.
 
 ---
 
 ## MCP and project scripts
 
-Each folder with `meta.json` under `.valid/scripts/` becomes its own MCP tool:
+MCP is for **knowledge RAG** and optional **project scripts**. It must never fake TDD or ACs.
+
+Each folder with `meta.json` under `.valid/scripts/` becomes a tool:
 
 ```text
 .valid/scripts/seed_db/
@@ -414,17 +709,19 @@ Each folder with `meta.json` under `.valid/scripts/` becomes its own MCP tool:
 }
 ```
 
-Reconnect MCP after adding tools. Never use MCP to fake TDD or ACs.
+After `valid install cursor`, Cursor starts `valid mcp` over **stdio** when the MCP server is enabled. The adapter uses command `valid` — ensure the binary is on PATH **or** edit `.cursor/mcp.json` to point at `./valid`.
+
+Reconnect MCP after adding tools.
 
 ---
 
 ## IDE packages
 
-Thin adapters only. Prefer `valid install`. VS Code/Cursor are convenient hosts, not a requirement.
+Thin adapters only. Prefer `valid install`.
 
 | Package | Wiring |
 |---------|--------|
-| [`packages/cursor`](packages/cursor/) | MCP + rules + skills tree |
+| [`packages/cursor`](packages/cursor/) | `.cursor/mcp.json`, rules, skills/, agents/ |
 | [`packages/claude-code`](packages/claude-code/) | MCP + `CLAUDE.md` + skills |
 | [`packages/opencode`](packages/opencode/) | Config fragment + skills |
 | [`packages/codex`](packages/codex/) | MCP TOML + `AGENTS.md` |
@@ -438,23 +735,43 @@ make sync-ide    # when developing VALID itself: packages → embed assets
 
 ## CLI reference
 
-Plumbing only — not the method UX:
+Plumbing only — **not** the method UX. Method UX is skills (`/plan`, `/spec`, …).
 
 ```text
 valid init
 valid install [cursor|claude|opencode|codex|all] [--force] [--link]
+
 valid feature new <slug> [--mode feature|patch|minipatch] [--north-star …] [--no-env]
 valid feature delete <slug> [--keep-env]
+
 valid gate <slug> [--trust-board]
 valid promote knowledge|env <slug> [--dry-run]
 valid merge <slug> [--skip-gate] [--allow-early] [--allow-current-head]
 valid env up|down <slug>
-valid dashboard --feature <slug>
+
+valid dashboard --feature <slug> [--port N]
 valid mcp [--http] [--addr 127.0.0.1:7433] [--allow-scripts-http]
+
 valid board set|show <slug> [--autonomy in_the_loop|above_the_loop] …
-valid task <slug> <id> …          # optional
-valid report <slug> …             # optional
+valid task <slug> <id> …          # optional helper
+valid report <slug> …             # optional helper
+
+valid --repo <path> …             # override git root discovery
 ```
+
+| Command | One-liner |
+|---------|-----------|
+| `init` | Seed `.valid/` |
+| `install` | Wire IDE adapters + refresh skills |
+| `feature new` | Board + (usually) worktree/DC |
+| `feature delete` | Abandon — no merge |
+| `gate` | AC coverage + execute `test_command` |
+| `promote knowledge` | High-bar knowledge copy |
+| `promote env` | Fail-hard merge into principal DC |
+| `merge` | Merge feature branch → tear down env |
+| `env up/down` | Start / stop feature DC (+ down removes worktree) |
+| `dashboard` | Visual board UI |
+| `mcp` | Knowledge + scripts |
 
 ---
 
@@ -462,18 +779,51 @@ valid report <slug> …             # optional
 
 | Symptom | Likely cause | What to do |
 |---------|--------------|------------|
-| Gate fails `no_tests` / `tests_not_green` | Suite not run or red | Fix tests; re-run `/audit` (gate executes `test_command`) |
-| Gate fails `ac_uncovered` | AC without `tasks[].covers` | Add/fix tasks on the board |
-| Gate fails `how_it_works_*` | Missing/stub Mermaid | Author real diagram in `how-it-works.mmd` |
-| `isolation_warning` | Outside worktree/DC or `minipatch` | Expected for minipatch; for features prefer worktree |
-| Promote env fail-hard | No principal DC / opaque Dockerfile / conflict | Read `workspace/env-promote-todo.md`; fix; re-run — **no merge yet** |
-| Merge refused (lifecycle) | Still in `plan`/`spec`/`build` | Finish audit first, or `--allow-early` (dangerous) |
+| `Board unloadable` / parse error on `what` | LLM wrote string arrays / wrong keys | Fix shapes ([board contract](#the-board-contract)); upgrade binary (tolerant loader); `curl` `/api/data` |
+| Dashboard empty / only errors | Same as above, or wrong `--feature` | Check slug; fix `data.json` |
+| Mermaid missing in UI | File under `workspace/` instead of feature root | Put diagram in `.valid/features/<slug>/how-it-works.mmd` |
+| `isolation_warning` after `feature new` | `devcontainer up` failed or CLI missing | `valid env up <slug>` to see the real error; install `@devcontainers/cli` + Docker-in-DC |
+| Gate `worktree_missing` | Worktree deleted / path wrong | Restore worktree or abandon/recreate feature |
+| Gate `no_tests` / `tests_not_green` | Suite not run or red | Fix tests; re-run `/audit` |
+| Gate `ac_uncovered` | AC without `tasks[].covers` | Add/fix tasks on the board |
+| Gate `how_it_works_*` | Missing/stub Mermaid | Author a real diagram in `how-it-works.mmd` |
+| Promote env fail-hard | No principal DC / opaque delta / conflict | Read `workspace/env-promote-todo.md`; **no merge yet** |
+| Merge refused (lifecycle) | Still in `plan`/`spec`/`build` | Finish audit, or `--allow-early` (dangerous) |
 | Merge refused (empty `base_branch`) | Board missing cut-from branch | Fix board or `--allow-current-head` |
-| Skills missing in IDE | Install not run / cache | `valid install <ide> --force`; reload MCP |
+| Skills missing in IDE | Install not run / stale cache | `valid install <ide> --force`; reload window / MCP |
+| MCP server won’t start | `valid` not on PATH | Point `.cursor/mcp.json` at `./valid` or install binary on PATH |
+| `git@github.com` Permission denied | No SSH keys in the container | Mount host `~/.ssh` read-only in `devcontainer.json` |
 | Orphan `valid-<slug>` container | Interrupted finish | `valid env down <slug>` or `docker rm -f valid-<slug>` |
+| Extra entries in `git worktree list` | Cursor agent worktrees | `git worktree prune`; ignore unless you care |
+| Want to drop a started feature | Changed mind | `valid feature delete <slug>` |
+
+---
+
+## FAQ
+
+**Do I need Cursor?**  
+No. Any agent that can follow `.valid/skills/` and call `valid` works.
+
+**Does `valid install` start the dashboard?**  
+No. Run `valid dashboard --feature <slug>` when you want it. MCP stdio is started by the IDE.
+
+**Is soft isolation a failure?**  
+No. It means quarantine DC did not come up (or you chose minipatch). Gates still apply; prefer fixing `env up` for real features.
+
+**Where should the agent write code?**  
+In `.valid/worktrees/<slug>/` for feature/patch. Not casually in the principal tree.
+
+**Can I use VALID without Docker?**  
+Yes for board + minipatch + gate against `test_command`. Full feature quarantine needs Docker + Dev Containers.
+
+**Does VALID create my principal Dev Container?**  
+Never. `promote env` only merges into an existing one, or fails hard.
+
+**Skills vs CLI?**  
+Skills = method UX (dialogue + board edits). CLI = scaffolding and mechanical proof. There is no `valid plan` product command.
 
 ---
 
 ## License
 
-MIT License
+MIT License — see [`LICENSE`](LICENSE).

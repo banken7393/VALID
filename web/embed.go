@@ -3,7 +3,7 @@ package web
 
 import "embed"
 
-// FS contains index.html, style.css, and app.js.
+// FS contains the dashboard HTML and client script (layout via Tailwind CDN).
 //
-//go:embed index.html style.css app.js
+//go:embed index.html app.js
 var FS embed.FS

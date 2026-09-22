@@ -8,7 +8,7 @@ alwaysApply: true
 
 When working in a repo initialized with VALID:
 
-1. Skills in `.valid/skills/` are **manual** (`disable-model-invocation: true`) — invoke them explicitly (`/plan`, `/spec`, `/build`, `/audit`, `/finish`, `/delegate`, …). Do not auto-run them.
+1. Skills in `.valid/skills/` are **manual** (`disable-model-invocation: true`) — invoke them explicitly (`/plan`, `/spec`, `/build-feature`, `/audit`, `/finish`, `/delegate`, …). Do not auto-run them.
 2. Invoke agents in `.valid/agents/` when a skill says so (`interviewer`, `developer`, `reviewer`, `delegate`). Board `autonomy`: `in_the_loop` (default) or `above_the_loop`.
 3. **Edit** `.valid/features/<slug>/data.json`, Mermaid, and workspace files yourself. Use the `valid` CLI for scaffold (`feature`), gate, promote, merge, and env — optional helpers (`board`/`task`/`report`) only if useful.
 4. Use MCP `valid` tools for `.valid/knowledge/**` and project scripts under `.valid/scripts/` (each script is an MCP tool). Never use MCP for TDD/ACs.

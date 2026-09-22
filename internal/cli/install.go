@@ -49,7 +49,7 @@ are kept unless --force.`,
 				}
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "")
-			fmt.Fprintln(cmd.OutOrStdout(), "Next: invoke skills manually in chat (/plan, /spec, /build, /audit, /finish).")
+			fmt.Fprintln(cmd.OutOrStdout(), "Next: invoke skills manually in chat (/plan, /spec, /build-feature, /audit, /finish).")
 			fmt.Fprintln(cmd.OutOrStdout(), "Skills are disable-model-invocation — the model will not auto-pick them.")
 			return nil
 		},

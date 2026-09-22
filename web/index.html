@@ -1,107 +1,198 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VALID</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* Theme tokens — consumed by Tailwind color aliases below */
+    :root,
+    [data-theme="dark"] {
+      --color-canvas: #141414;
+      --color-canvas-mid: #141414;
+      --color-canvas-elev: #141414;
+      --color-ink: #f5f5f5;
+      --color-mute: #c4c4c4;
+      --color-accent: #9bb8d0;
+      --color-progress: #7eb8a4;
+      --color-warn: #e0bc4a;
+      --color-fail: #e08a82;
+      --color-line: rgba(255, 255, 255, 0.12);
+    }
+    [data-theme="light"] {
+      --color-canvas: #f3f3f4;
+      --color-canvas-mid: #f3f3f4;
+      --color-canvas-elev: #f3f3f4;
+      --color-ink: #1c1c1e;
+      --color-mute: #6b6b70;
+      --color-accent: #3d6a8a;
+      --color-progress: #2f7a64;
+      --color-warn: #9a7b1a;
+      --color-fail: #b54a42;
+      --color-line: rgba(0, 0, 0, 0.1);
+    }
+  </style>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: {
+              DEFAULT: 'var(--color-canvas)',
+              mid: 'var(--color-canvas-mid)',
+              elev: 'var(--color-canvas-elev)',
+            },
+            ink: 'var(--color-ink)',
+            mute: 'var(--color-mute)',
+            accent: 'var(--color-accent)',
+            progress: 'var(--color-progress)',
+            warn: 'var(--color-warn)',
+            fail: 'var(--color-fail)',
+            line: 'var(--color-line)',
+          },
+          fontFamily: {
+            display: ['Fraunces', 'Iowan Old Style', 'Georgia', 'serif'],
+            sans: ['IBM Plex Sans', 'Segoe UI', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+          },
+          keyframes: {
+            rise: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+          },
+          animation: {
+            rise: 'rise 600ms ease-out both',
+            'rise-slow': 'rise 800ms ease-out both',
+          },
+        },
+      },
+    };
+  </script>
   <script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
     window.mermaid = mermaid;
-    mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+    window.__validMermaidReady = true;
   </script>
-  <link rel="stylesheet" href="/style.css" />
 </head>
-<body>
-  <div class="shell">
-    <header class="brand-block">
-      <p class="brand">VALID</p>
-      <p class="tagline">Visual progress of AI feature work — board state, not chat vibes</p>
-      <p id="live-stamp" class="live-stamp" aria-live="polite">Connecting…</p>
+<body class="min-h-full bg-canvas font-sans text-ink antialiased">
+  <div class="mx-auto w-[min(1100px,calc(100%-2rem))] py-10 pb-16">
+    <header class="mb-8 animate-rise">
+      <p class="font-display text-[clamp(2.6rem,6vw,4.2rem)] font-bold leading-[0.95] tracking-[-0.03em] text-ink">
+        VALID
+      </p>
+      <p class="mt-2.5 max-w-xl text-mute">
+        Visual progress of AI feature work — board state, not chat vibes
+      </p>
+      <p id="live-stamp" class="mt-2 font-mono text-xs text-mute" aria-live="polite">
+        Connecting…
+      </p>
     </header>
 
     <main>
-      <section class="status-row" aria-live="polite">
+      <section
+        class="mb-2 grid grid-cols-2 gap-4 border-y border-line py-4 animate-rise sm:grid-cols-3 lg:grid-cols-6"
+        aria-live="polite"
+      >
         <div>
-          <p class="label">Feature</p>
-          <p id="feature" class="value">—</p>
+          <p class="text-[0.75rem] uppercase tracking-[0.08em] text-mute">Feature</p>
+          <p id="feature" class="mt-1.5 text-lg font-semibold text-ink">—</p>
         </div>
         <div>
-          <p class="label">Lifecycle</p>
-          <p id="lifecycle" class="value status-pill">—</p>
+          <p class="text-[0.75rem] uppercase tracking-[0.08em] text-mute">Lifecycle</p>
+          <p id="lifecycle" class="mt-1.5 text-lg font-semibold text-ink">—</p>
         </div>
         <div>
-          <p class="label">Mode</p>
-          <p id="mode" class="value">—</p>
+          <p class="text-[0.75rem] uppercase tracking-[0.08em] text-mute">Mode</p>
+          <p id="mode" class="mt-1.5 text-lg font-semibold text-ink">—</p>
         </div>
         <div>
-          <p class="label">Autonomy</p>
-          <p id="autonomy" class="value status-pill">—</p>
+          <p class="text-[0.75rem] uppercase tracking-[0.08em] text-mute">Autonomy</p>
+          <p id="autonomy" class="mt-1.5 text-lg font-semibold text-ink">—</p>
         </div>
         <div>
-          <p class="label">Gate</p>
-          <p id="gate" class="value review-badge" data-passed="false">—</p>
+          <p class="text-[0.75rem] uppercase tracking-[0.08em] text-mute">Gate</p>
+          <p id="gate" class="mt-1.5 text-lg font-semibold text-ink">—</p>
         </div>
         <div>
-          <p class="label">Isolation</p>
-          <p id="isolation" class="value">—</p>
+          <p class="text-[0.75rem] uppercase tracking-[0.08em] text-mute">Isolation</p>
+          <p id="isolation" class="mt-1.5 text-lg font-semibold text-ink">—</p>
         </div>
       </section>
 
-      <section class="panel">
-        <h2>North star / ACs</h2>
-        <p id="north-star" class="spec-title">—</p>
-        <ul id="acceptance"></ul>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">North star / ACs</h2>
+        <p id="north-star" class="mb-2 text-[1.05rem] text-ink">—</p>
+        <ul id="acceptance" class="m-0 list-none space-y-0.5 pl-0"></ul>
       </section>
 
-      <section class="panel">
-        <h2>Phases</h2>
-        <ul id="phases-list"></ul>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Phases</h2>
+        <ul id="phases-list" class="m-0 list-none space-y-1 pl-0 text-ink"></ul>
       </section>
 
-      <section class="panel">
-        <h2>How it works</h2>
-        <div id="diagram" class="diagram"></div>
+      <section class="mt-8 animate-rise-slow">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="font-display text-[1.35rem] font-semibold text-ink">How it works</h2>
+          <div class="flex items-center gap-1" role="group" aria-label="Diagram zoom">
+            <button type="button" id="diagram-zoom-out" class="rounded border border-line bg-canvas-elev px-2.5 py-1 font-mono text-sm text-ink hover:border-accent hover:text-accent" title="Zoom out">−</button>
+            <button type="button" id="diagram-zoom-in" class="rounded border border-line bg-canvas-elev px-2.5 py-1 font-mono text-sm text-ink hover:border-accent hover:text-accent" title="Zoom in">+</button>
+            <button type="button" id="diagram-zoom-fit" class="rounded border border-line bg-canvas-elev px-2.5 py-1 font-mono text-xs text-mute hover:border-accent hover:text-accent" title="Fit to view">fit</button>
+            <button type="button" id="diagram-zoom-reset" class="rounded border border-line bg-canvas-elev px-2.5 py-1 font-mono text-xs text-mute hover:border-accent hover:text-accent" title="Reset zoom">100%</button>
+          </div>
+        </div>
+        <div
+          id="diagram-viewport"
+          class="relative h-[min(70vh,560px)] cursor-grab overflow-hidden rounded-md border border-line bg-canvas-elev active:cursor-grabbing"
+          title="Scroll to zoom · drag to pan · double-click to reset"
+        >
+          <div id="diagram" class="absolute left-0 top-0 origin-top-left p-5 will-change-transform select-none"></div>
+        </div>
+        <p class="mt-2 font-mono text-xs text-mute">Scroll to zoom · drag to pan · double-click resets</p>
       </section>
 
-      <section class="panel">
-        <h2>Tasks</h2>
-        <ul id="tasks-list" class="tests-list"></ul>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Tasks</h2>
+        <ul id="tasks-list" class="m-0 list-none space-y-1 pl-0 text-ink"></ul>
       </section>
 
-      <section class="panel">
-        <h2>Decisions</h2>
-        <ul id="decisions-list"></ul>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Decisions</h2>
+        <ul id="decisions-list" class="m-0 list-none space-y-1 pl-0 text-ink"></ul>
       </section>
 
-      <section class="panel">
-        <h2>Assumptions</h2>
-        <ul id="assumptions-list"></ul>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Assumptions</h2>
+        <ul id="assumptions-list" class="m-0 list-none space-y-0.5 pl-0"></ul>
       </section>
 
-      <section class="panel">
-        <h2>Pending promotions</h2>
-        <ul id="promotions-list"></ul>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Pending promotions</h2>
+        <ul id="promotions-list" class="m-0 list-none space-y-0.5 pl-0"></ul>
       </section>
 
-      <section class="panel">
-        <h2>Tests</h2>
-        <p id="tests-summary" class="value">—</p>
-        <ul id="tests-list" class="tests-list"></ul>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Tests</h2>
+        <p id="tests-summary" class="mt-1.5 text-lg font-semibold text-ink">—</p>
+        <ul id="tests-list" class="mt-3 list-disc pl-4 font-mono text-[0.9rem] text-mute"></ul>
       </section>
 
-      <section class="panel">
-        <h2>Audit findings</h2>
-        <ol id="findings" class="history"></ol>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Audit findings</h2>
+        <ol id="findings" class="m-0 list-decimal pl-5"></ol>
       </section>
 
-      <section class="panel">
-        <h2>Last test output</h2>
-        <pre id="output" class="output">No test output yet.</pre>
+      <section class="mt-8 animate-rise-slow">
+        <h2 class="mb-3 font-display text-[1.35rem] font-semibold text-ink">Last test output</h2>
+        <pre id="output" class="m-0 max-h-60 overflow-auto whitespace-pre-wrap rounded-md border border-line bg-canvas-elev p-4 font-mono text-[0.85rem] text-mute">No test output yet.</pre>
       </section>
     </main>
 
-    <p id="error" class="error" hidden></p>
+    <p id="error" class="mt-6 text-fail" hidden></p>
   </div>
   <script src="/app.js"></script>
 </body>

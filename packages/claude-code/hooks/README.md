@@ -2,7 +2,7 @@
 
 Claude Code should treat:
 
-- `.valid/skills/*.md` as slash/skill procedures (`plan`, `spec`, `build`, `audit`, `finish`, `delegate`, …)
+- `.valid/skills/*.md` as slash/skill procedures (`plan`, `spec`, `build-feature`, `audit`, `finish`, `delegate`, …)
 - `.valid/agents/*.md` as subagent personas (`interviewer`, `developer`, `reviewer`, `delegate`)
 - `valid` CLI as scaffold + gate/promote/merge/env plumbing (the LLM edits feature boards)
 

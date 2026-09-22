@@ -10,7 +10,7 @@ A **dashboard** shows how far the AI has actually gotten — board state, not ch
 Your editor is optional wiring, not the product.
 
 ```text
-Human → /plan → /spec → /build → /audit → /finish
+Human → /plan → /spec → /build-feature → /audit → /finish
               ↑                    ↑
          board on disk        valid gate
          + Mermaid            (ACs + real tests)
@@ -116,14 +116,14 @@ Do not confuse these:
 
 | Layer | What it is | What it is not |
 |-------|------------|----------------|
-| **Skill** | Markdown procedure under `.valid/skills/` you invoke in chat (`/plan`, `/build`, …). Orchestrates dialogue, **edits the board**, and decides when to call CLI / MCP / agents. | Not a CLI subcommand. Not auto-run (`disable-model-invocation: true`). |
+| **Skill** | Markdown procedure under `.valid/skills/` you invoke in chat (`/plan`, `/build-feature`, …). Orchestrates dialogue, **edits the board**, and decides when to call CLI / MCP / agents. | Not a CLI subcommand. Not auto-run (`disable-model-invocation: true`). |
 | **Agent** | Role prompt under `.valid/agents/` (`interviewer`, `developer`, `reviewer`, `delegate`). A skill may invoke it for focused work. | Not the full method by itself. |
 | **CLI** (`valid`) | Deterministic scaffolding: feature / worktree / DC, gate, promote, merge, env, dashboard, install. | Does not dialog. There is no product UX of `valid plan` / `valid build`. |
 | **MCP** (`valid mcp`) | Knowledge RAG + optional project script tools. | Never mutates boards / TDD / ACs. |
 
 ```text
 You (human)
-  └─► Skill (e.g. /build)
+  └─► Skill (e.g. /build-feature)
         ├─► Agent role (developer / delegate / …)
         ├─► edits ──► .valid/features/<slug>/   (progress contract)
         ├─► CLI valid …  ──► worktree / DC / gate / promote / merge / dashboard
@@ -165,7 +165,7 @@ your-project/
 ├── .devcontainer/                 # PRINCIPAL — yours; VALID never invents this
 ├── .valid/
 │   ├── config.json                # test_command, ports, isolation, database…
-│   ├── skills/                    # plan, spec, build, audit, finish, patch, minipatch, delegate
+│   ├── skills/                    # plan, spec, build-feature, audit, finish, patch, minipatch, delegate
 │   ├── agents/                    # interviewer, developer, reviewer, delegate
 │   ├── knowledge/                 # RAG corpus (architecture, conventions, decisions…)
 │   ├── scripts/                   # optional MCP tools (meta.json + runner)
@@ -190,7 +190,7 @@ Every feature board has a `lifecycle` field. Skills move it forward; the gate an
 |-----------|--------|----------------|
 | `plan` | Shape, assumptions, Mermaid mechanism | `/plan` |
 | `spec` | Measurable acceptance criteria (`what[]`) | `/spec` |
-| `build` | Decisions, tasks/`covers`, TDD in quarantine | `/build`, `/delegate` |
+| `build` | Decisions, tasks/`covers`, TDD in quarantine | `/build-feature`, `/delegate` |
 | `audit` | Review + mechanical gate | `/audit` |
 | `finish` | Promote → merge → teardown | `/finish` |
 | `done` | Merged; board usually deleted | (terminal) |
@@ -233,10 +233,21 @@ Wrong shapes make `valid dashboard` / `valid gate` fail to load the board (`Boar
     { "id": "ac1", "description": "User can reset password via email link" }
   ],
   "phases": [
-    { "id": "p1", "title": "Core reset flow", "order": 1 }
+    {
+      "id": "p1",
+      "name": "Core reset flow",
+      "outcome": "User receives email link and can set a new password once.",
+      "status": "agreed"
+    }
   ],
   "tasks": [
-    { "id": "t1", "title": "Add reset token model", "status": "pending", "covers": ["ac1"] }
+    {
+      "id": "t1",
+      "title": "Add reset token model",
+      "status": "pending",
+      "phase": "p1",
+      "covers": ["ac1"]
+    }
   ],
   "decisions": [
     { "id": "D1", "title": "Token TTL", "detail": "15 minutes; single use" }
@@ -254,8 +265,12 @@ Wrong shapes make `valid dashboard` / `valid gate` fail to load the board (`Boar
 |-------|------|--------|
 | `north_star` | string | Outcome of the whole feature |
 | `what[]` | `{id, description}` | Acceptance criteria — **not** a string array |
+| `phases[]` | `{id, name, outcome, status}` | Array order = sequence; **no** `order` / `title` |
+| `phases[].status` | `agreed` \| `pending` \| `doing` \| `done` | Spec writes `agreed` |
+| `tasks[]` | `{id, title, status, phase?, covers, description?}` | Dashboard groups by `phase` |
+| `tasks[].status` | `pending` \| `doing` \| `done` \| `failed` | Colours: orange / teal / accent / red |
+| `tasks[].phase` | string | `phases[].id` when phases exist |
 | `tasks[].covers` | string[] | Must reference `what[].id` |
-| `tasks[].status` | `pending` \| `doing` \| `done` | |
 | `decisions[]` | `{id, title, detail?}` | Prefer `title`/`detail`, not `text` |
 | `assumptions[]` | `{id, detail}` | Put “breaks if wrong” inside `detail` |
 | `autonomy` | `in_the_loop` \| `above_the_loop` | Default `in_the_loop` |
@@ -264,7 +279,7 @@ Wrong shapes make `valid dashboard` / `valid gate` fail to load the board (`Boar
 | `tdd` | aggregates + `cases[]` | Gate live-run replaces suite evidence |
 | `how_it_works` / `.mmd` | Mermaid | File on disk wins for the dashboard |
 
-The loader is **somewhat** tolerant of common LLM mistakes (string `what`, `text` on decisions, stringy `isolation_warning`), but skills and knowledge teach the **canonical** shapes — write those.
+The loader is **somewhat** tolerant of common LLM mistakes (string `what`, `text` on decisions, `title` on phases, stringy `isolation_warning`), but skills and knowledge teach the **canonical** shapes — write those.
 
 ### Who writes what
 
@@ -455,6 +470,7 @@ If you want **promote env** later, ensure a principal `.devcontainer/` already e
   "mcp_http_port": 7433,
   "feature_dashboard_port": 0,
   "feature_port_offset": 100,
+  "theme": "dark",
   "main_devcontainer": ".devcontainer/devcontainer.json",
   "scripts_root": ".valid/scripts",
   "language": "repo",
@@ -471,6 +487,7 @@ If you want **promote env** later, ensure a principal `.devcontainer/` already e
 | `mcp_http_port` | `valid mcp --http` |
 | `feature_dashboard_port` | Base for feature DC host ports; `0` → `dashboard_port + feature_port_offset` (+ slug salt) |
 | `feature_port_offset` | Offset used when auto-deriving feature ports |
+| `theme` | Dashboard UI: `dark` (default) or `light` |
 | `main_devcontainer` | Principal DC JSON path (never invented) |
 | `scripts_root` | MCP script nodes |
 | `language` | Board prose: `repo` = match the repository language, or `en` / `es` / … |
@@ -494,7 +511,7 @@ flowchart TD
   choose -->|known small + quarantine| patch["/patch"]
   choose -->|tiny / no isolation| minipatch["/minipatch"]
   plan --> spec["/spec"]
-  spec --> build["/build"]
+  spec --> build[ "/build-feature"]
   patch --> build
   minipatch --> build
   build --> maybeDel{Need autonomy chunk?}
@@ -527,7 +544,7 @@ Goal: new behaviour with quarantine, ACs, TDD, review, promote, merge.
 |------|------------|--------------|
 | 1 | `/plan my-feature` | Interview → Mermaid → `valid feature new` → worktree + feature DC. Board at `.valid/features/my-feature/`. |
 | 2 | `/spec` | Measurable `what[]` + optional `phases[]` (`interviewer`). |
-| 3 | `/build` | Decisions + tasks with `covers` → TDD in quarantine (`developer`). Default `in_the_loop`. |
+| 3 | `/build-feature` | Decisions + tasks with `covers` → TDD in quarantine (`developer`). Default `in_the_loop`. |
 | 3b | `/delegate` (optional) | Bounded chunk with `above_the_loop`. Same gates. |
 | 4 | `/audit` | `reviewer` + `valid gate`. Fix and re-audit if red. |
 | 5 | `/finish` | Promote knowledge (sparingly) → fail-hard promote env → merge into recorded base branch → delete board → tear down env. |
@@ -553,7 +570,7 @@ sequenceDiagram
   participant C as valid CLI
   participant DC as Feature Dev Container
   participant M as Principal .devcontainer
-  H->>S: /plan → /spec → /build
+  H->>S: /plan → /spec → /build-feature
   S->>C: feature new / env
   C->>DC: quarantine up
   S->>DC: code + test_command
@@ -585,7 +602,7 @@ Use for typo-level / obvious one-file fixes when isolation is overkill.
 
 ```mermaid
 flowchart LR
-  build["/build in_the_loop"] --> ask{Human wants stream?}
+  build["/build-feature in_the_loop"] --> ask{Human wants stream?}
   ask -->|set autonomy| atl[above_the_loop]
   ask -->|bounded chunk| del["/delegate"]
   atl --> stream[Stream trivial tasks]

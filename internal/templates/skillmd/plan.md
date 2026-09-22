@@ -30,22 +30,76 @@ The dashboard and CLI **fail to load** the board if shapes are wrong. Always use
 
 ```json
 "what": [{ "id": "ac1", "description": "…" }]
-"decisions": [{ "id": "D1", "title": "short name", "detail": "full rationale" }]
+"decisions": [{ "id": "D1", "title": "short name", "detail": "full rationale / choice" }]
 "assumptions": [{ "id": "A1", "detail": "… Breaks if wrong: …" }]
-"tasks": [{ "id": "t1", "title": "…", "status": "pending", "covers": ["ac1"] }]
-"phases": [{ "id": "p1", "title": "…", "order": 1 }]
+"tasks": [{ "id": "t1", "title": "…", "status": "pending", "phase": "p1", "covers": ["ac1"] }]
+"phases": [{ "id": "p1", "name": "…", "outcome": "…", "status": "agreed" }]
 "environment.isolation_warning": false
 ```
 
 Forbidden / broken shapes (do **not** write these):
 
 - `what` as string array
-- `decisions[].text` or `assumptions[].text` instead of `title`/`detail`
+- `decisions[].question` / `decisions[].choice` / `decisions[].text` — use **`title`** + **`detail`** only
+- `assumptions[].text` instead of `detail`
+- `phases[].title` / `phases[].order` — use **`name`** + **`outcome`** + **`status`**; sequence = array order (no `order` field)
+- `tasks` without `covers` / `phase` when phases exist — every task needs `covers` (AC ids) and `phase` (`p1`…) when `phases[]` is non-empty
 - `isolation_warning` as a prose string (must be boolean)
 - Mermaid under `workspace/how-it-works.mmd` — correct path is `.valid/features/<slug>/how-it-works.mmd`
 - Putting the full Mermaid only in `data.json` `how_it_works` — keep Mermaid in the `.mmd` file; JSON field may be empty or a one-line note
 
-## Produces
+Decision example (canonical — dashboard reads these keys):
+
+```json
+{
+  "id": "D1",
+  "title": "¿Corregir mapping definitions ↔ docs?",
+  "detail": "Sí. Biodiversidad→1.10; …"
+}
+```
+
+Wrong (dashboard shows empty / "—"):
+
+```json
+{ "id": "D1", "question": "…", "choice": "…", "decided_at": "2026-09-22" }
+```
+
+Phase example (canonical — Spec writes these; Build consumes them):
+
+```json
+{
+  "id": "p1",
+  "name": "Defaults al crear ciudad",
+  "outcome": "Al crear una ciudad, A1–C3 nacen con mapping correcto…",
+  "status": "agreed"
+}
+```
+
+Wrong: `{ "id": "p1", "title": "…", "order": 1 }` — no `title`/`order`; use `name`/`outcome`/`status`.
+
+Task example (canonical — Build writes these; dashboard groups by `phase`):
+
+```json
+{
+  "id": "t1",
+  "title": "Seed A1–C3 on city create",
+  "status": "pending",
+  "phase": "p1",
+  "covers": ["ac1", "ac2"],
+  "description": "Optional short note"
+}
+```
+
+| Field | Required | Notes |
+|-------|----------|--------|
+| `id` | yes | Stable `t1`, `t2`, … |
+| `title` | yes | Short work label |
+| `status` | yes | `pending` \| `doing` \| `done` \| `failed` |
+| `phase` | when phases exist | Must be a `phases[].id` |
+| `covers` | yes | One or more `what[].id` |
+| `description` | no | Extra context |
+
+Wrong: flat `"covers=ac1"` prose, missing `phase`, or inventing status values outside the four above.## Produces
 
 - `north_star`, early `assumptions[]`, `decisions[]` candidates
 - `how_it_works` + `how-it-works.mmd` — the mechanism drawing

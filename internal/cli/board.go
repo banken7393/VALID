@@ -141,7 +141,7 @@ func newBoardSetCmd() *cobra.Command {
 	cmd.Flags().StringVar(&howFile, "how-it-works-file", "", "Path to Mermaid file")
 	cmd.Flags().StringVar(&howInline, "how-it-works", "", "Inline Mermaid source")
 	cmd.Flags().StringVar(&whatJSON, "what", "", `JSON array of {"id","description"} ACs`)
-	cmd.Flags().StringVar(&phasesJSON, "phases", "", `JSON array of {"id","title","order"}`)
+	cmd.Flags().StringVar(&phasesJSON, "phases", "", `JSON array of {"id","name","outcome","status"}`)
 	cmd.Flags().StringVar(&decision, "decision", "", "id|title|detail")
 	return cmd
 }

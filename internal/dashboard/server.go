@@ -19,16 +19,17 @@ type Server struct {
 	DataPath string
 	RepoRoot string
 	Addr     string
+	Theme    string // dark (default) | light — from .valid/config.json
 }
 
 // New creates a dashboard server for a board JSON path.
 func New(dataPath, addr string) *Server {
-	return &Server{DataPath: dataPath, Addr: addr}
+	return &Server{DataPath: dataPath, Addr: addr, Theme: schema.ThemeDark}
 }
 
 // NewWithRepo creates a dashboard that can resolve how-it-works from paths on disk.
 func NewWithRepo(dataPath, repoRoot, addr string) *Server {
-	return &Server{DataPath: dataPath, RepoRoot: repoRoot, Addr: addr}
+	return &Server{DataPath: dataPath, RepoRoot: repoRoot, Addr: addr, Theme: schema.ThemeDark}
 }
 
 // Handler returns the HTTP mux for the dashboard.
@@ -44,10 +45,17 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/data", s.handleData)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true}`))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":    true,
+			"theme": s.resolvedTheme(),
+		})
 	})
 	mux.Handle("/", fileServer)
 	return mux
+}
+
+func (s *Server) resolvedTheme() string {
+	return schema.NormalizeTheme(s.Theme)
 }
 
 func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
@@ -55,17 +63,28 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// Prefer live config so theme edits apply without restarting the process.
+	theme := s.resolvedTheme()
+	if s.RepoRoot != "" {
+		if cfg, err := schema.LoadConfig(s.RepoRoot); err == nil {
+			theme = schema.NormalizeTheme(cfg.Theme)
+			s.Theme = theme
+		}
+	}
 	b, err := schema.LoadBoard(s.DataPath)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error(), "theme": theme})
 		return
 	}
 	enrichHowItWorks(s.RepoRoot, b)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(b)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"theme": theme,
+		"board": b,
+	})
 }
 
 func enrichHowItWorks(repoRoot string, b *schema.Board) {
@@ -94,7 +113,7 @@ func (s *Server) ListenAndServe() error {
 		Handler:           s.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	fmt.Printf("VALID dashboard listening on http://%s (board: %s)\n", displayAddr(s.Addr), s.DataPath)
+	fmt.Printf("VALID dashboard listening on http://%s (board: %s theme: %s)\n", displayAddr(s.Addr), s.DataPath, s.resolvedTheme())
 	return srv.ListenAndServe()
 }
 

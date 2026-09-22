@@ -26,7 +26,7 @@ Creates `.valid/features/<slug>/` **without** worktree/DC. Expect `environment.i
 
 ## 2. Agree done-list as ACs
 
-Edit the board yourself: small `what[]` + `tasks[]` with `covers`. Max ~5 testable lines.  
+Edit the board yourself: small `what[]` + `tasks[]` like `{ "id":"t1", "title":"…", "status":"pending", "covers":["ac1"] }` (`phase` if you added phases). Max ~5 testable lines.  
 If you cannot point at a precedent in code, stop — this is **plan** / **spec**.
 
 ## 3. Change code on the current branch

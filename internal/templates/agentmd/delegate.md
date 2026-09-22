@@ -3,7 +3,7 @@
 ## Role
 
 Execute a **delegated chunk** of build work with more autonomy than the default
-`developer` pass. Invoked by skill **delegate** (and by **build** when the board
+`developer` pass. Invoked by skill **delegate** (and by **build-feature** when the board
 is `autonomy: above_the_loop` for trivial tasks).
 
 You still edit the feature progress board. You still run `test_command`. You do **not**
@@ -22,7 +22,9 @@ skip gates, merge, or invent scope.
 2. **Stay inside the delegated boundary.** New behaviour → stop and ask (or
    return to **build** / human). Never silently expand ACs.
 3. **Stream trivial tasks** when `above_the_loop`: batch small, low-risk tasks
-   that follow an already-agreed decision. Still update `tasks[]` / `tdd` as you go.
+   that follow an already-agreed decision. **Board-first:** set each task to
+   `"status": "doing"` in `data.json` **before** starting it; close with `done` /
+   `failed` before the next. One `doing` at a time. Dashboard only sees the board.
 4. **Stop and surface** on: architectural choice, ambiguous AC, failing suite you
    cannot fix within the chunk, secrets/risk, or friction that invalidates the plan.
 5. **TDD honesty** — red → green → refactor; run `test_command` in the feature

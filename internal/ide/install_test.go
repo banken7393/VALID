@@ -28,7 +28,7 @@ func TestInstallCursorPublishesSkills(t *testing.T) {
 		filepath.Join(dir, ".cursor", "mcp.json"),
 		filepath.Join(dir, ".cursor", "rules", "valid.mdc"),
 		filepath.Join(dir, ".cursor", "skills", "plan", "SKILL.md"),
-		filepath.Join(dir, ".cursor", "skills", "build", "SKILL.md"),
+		filepath.Join(dir, ".cursor", "skills", "build-feature", "SKILL.md"),
 		filepath.Join(dir, ".cursor", "skills", "finish", "SKILL.md"),
 		filepath.Join(dir, ".cursor", "skills", "delegate", "SKILL.md"),
 		filepath.Join(dir, ".cursor", "agents", "developer.md"),

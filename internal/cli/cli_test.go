@@ -26,7 +26,7 @@ func TestInitCreatesHierarchy(t *testing.T) {
 	checks := []string{
 		filepath.Join(dir, ".valid", "config.json"),
 		filepath.Join(dir, ".valid", "skills", "plan.md"),
-		filepath.Join(dir, ".valid", "skills", "build.md"),
+		filepath.Join(dir, ".valid", "skills", "build-feature.md"),
 		filepath.Join(dir, ".valid", "skills", "finish.md"),
 		filepath.Join(dir, ".valid", "skills", "delegate.md"),
 		filepath.Join(dir, ".valid", "skills", "minipatch.md"),

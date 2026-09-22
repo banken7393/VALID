@@ -31,14 +31,19 @@ Review `.valid/worktrees/<slug>/.devcontainer/` and adjust `BASE_IMAGE` if neede
 
 ## 2. Agree a tiny WHAT
 
-With the human, write a short `what[]` (and sketch `tasks[]` with `covers`) by **editing** `data.json`.  
-Same AC quality bar as Spec — just fewer items. Reject vague “fix it” without a testable behaviour.
+With the human, write a short `what[]` (and sketch `tasks[]`) by **editing** `data.json`:
+
+```json
+{ "id": "t1", "title": "…", "status": "pending", "phase": "p1", "covers": ["ac1"] }
+```
+
+Same AC quality bar as Spec — just fewer items. Reject vague “fix it” without a testable behaviour. If you add `phases[]`, every task must set `phase`.
 
 Set `lifecycle` appropriately (`spec` then `build` as you go).
 
 ## 3. Build with TDD
 
-Follow skill **build** (developer agent, `test_command`, board evidence, in-the-loop by default). Prefer the feature worktree.
+Follow skill **build-feature** (developer agent, `test_command`, board evidence, in-the-loop by default). Prefer the feature worktree.
 
 ## 4. Audit → Finish
 

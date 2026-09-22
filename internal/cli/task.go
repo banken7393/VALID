@@ -14,6 +14,7 @@ func newTaskCmd() *cobra.Command {
 		status string
 		covers string
 		desc   string
+		phase  string
 	)
 	cmd := &cobra.Command{
 		Use:   "task <slug> <task-id>",
@@ -38,7 +39,7 @@ func newTaskCmd() *cobra.Command {
 					}
 				}
 			}
-			if err := b.UpsertTask(taskID, title, status, desc, coverIDs); err != nil {
+			if err := b.UpsertTaskFull(taskID, title, status, desc, phase, coverIDs); err != nil {
 				return err
 			}
 			if b.Lifecycle == "plan" || b.Lifecycle == "spec" {
@@ -47,13 +48,14 @@ func newTaskCmd() *cobra.Command {
 			if err := feature.Save(repo, b); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Upserted task %q on %q covers=%v\n", taskID, slug, coverIDs)
+			fmt.Fprintf(cmd.OutOrStdout(), "Upserted task %q on %q phase=%q covers=%v\n", taskID, slug, phase, coverIDs)
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&title, "title", "", "Task title")
-	cmd.Flags().StringVar(&status, "status", "pending", "pending|doing|done")
+	cmd.Flags().StringVar(&status, "status", "pending", "pending|doing|done|failed")
 	cmd.Flags().StringVar(&covers, "covers", "", "Comma-separated AC ids")
 	cmd.Flags().StringVar(&desc, "description", "", "Optional description")
+	cmd.Flags().StringVar(&phase, "phase", "", "Phase id (phases[].id), e.g. p1")
 	return cmd
 }

@@ -19,7 +19,7 @@ func NewRoot() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "valid",
 		Short:         "Visual Agentic Loop for Isolated Development",
-		Long:          "VALID CLI is deterministic plumbing for boards, worktrees, Dev Containers, gates, promote, merge, MCP, dashboard, and IDE install. Method UX is skills (plan/spec/build/audit/finish/delegate/…), not these command names.",
+		Long:          "VALID CLI is deterministic plumbing for boards, worktrees, Dev Containers, gates, promote, merge, MCP, dashboard, and IDE install. Method UX is skills (plan/spec/build-feature/audit/finish/delegate/…), not these command names.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

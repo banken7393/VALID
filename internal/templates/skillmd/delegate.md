@@ -3,7 +3,7 @@ name: delegate
 description: >-
   Hand a phase or task chunk to the delegate agent with higher autonomy
   (above the loop). Stream trivial work; stop on real decisions. Invoke
-  explicitly during /build — never auto-run.
+  explicitly during /build-feature — never auto-run.
 argument-hint: "[feature-slug] [phase-id|task-range]"
 disable-model-invocation: true
 user-invocable: true
@@ -45,7 +45,7 @@ Write (or confirm) on the board:
 
 ## 2. Execute
 
-Follow skill **build** TDD mechanics inside the feature worktree/DC:
+Follow skill **build-feature** TDD mechanics inside the feature worktree/DC:
 
 - Stream **trivial** tasks without pausing for each one
 - Pause on substantial tasks, phase boundaries, and hard stops

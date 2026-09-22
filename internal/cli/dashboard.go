@@ -45,6 +45,7 @@ func newDashboardCmd() *cobra.Command {
 			dataPath := schema.BoardPath(repo, feature)
 			addr := fmt.Sprintf("127.0.0.1:%d", port)
 			srv := dashboard.NewWithRepo(dataPath, repo, addr)
+			srv.Theme = schema.NormalizeTheme(cfg.Theme)
 			return srv.ListenAndServe()
 		},
 	}

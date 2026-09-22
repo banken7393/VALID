@@ -21,7 +21,7 @@ Board: `.valid/features/<slug>/data.json`. **You edit the board** with your file
 ## Produces
 
 - `north_star` — the usable outcome of the whole feature
-- `phases[]` — vertical slices with outcomes (only if more than one slice)
+- `phases[]` — vertical slices with `name` + `outcome` (only if more than one slice)
 - `what[]` — acceptance criteria: indivisible, testable, each with stable `id`
 
 Nothing else. Decisions, architecture, file paths, and tasks belong to **build**. At Spec time those columns stay empty **by design**.
@@ -45,6 +45,26 @@ One focused round at a time, by impact.
 
 - `north_star`: what “done” feels like — the usable outcome of the whole feature.
 - `phases[]` only if more than one usable slice. Each phase ships **one** usable, testable outcome; phase 1 proves the core assumption. Keep count small (~4 max) or split into features.
+
+Canonical phase shape (array order = sequence — **do not** write `order` or `title`):
+
+```json
+{
+  "id": "p1",
+  "name": "Defaults al crear ciudad",
+  "outcome": "Al crear una ciudad, … measurable done-state for this slice.",
+  "status": "agreed"
+}
+```
+
+| Field | Required | Notes |
+|-------|----------|--------|
+| `id` | yes | Stable `p1`, `p2`, … |
+| `name` | yes | Short label |
+| `outcome` | yes | What “this slice is done” means (testable) |
+| `status` | yes | `agreed` at Spec; Build may move to `doing` / `done` |
+
+Wrong: `{ "id": "p1", "title": "…", "order": 1 }`.
 
 Persist by editing `data.json` as you go. Set `lifecycle` to `spec`.
 
@@ -76,7 +96,7 @@ Optionally self-check claims against code/docs (evidence-based): an AC that is n
 
 ## 6. Leave
 
-Show the board / `valid dashboard --feature <slug>` so the human can visually check progress. Iterate until they approve. Then skill **build**.  
+Show the board / `valid dashboard --feature <slug>` so the human can visually check progress. Iterate until they approve. Then skill **build-feature** (`/build-feature`).  
 Do not invent `tasks[]` here unless the human insists on a tiny preview — and even then, Build owns HOW.
 
 ## Guardrails

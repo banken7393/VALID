@@ -47,7 +47,13 @@ func TestLoadBoardDogfoodLLMShapes(t *testing.T) {
   "phases": [],
   "tasks": [],
   "decisions": [
-    { "id": "D1", "text": "Concepto e identidad = dossier." }
+    { "id": "D1", "text": "Concepto e identidad = dossier." },
+    {
+      "id": "D2",
+      "question": "¿Corregir mapping?",
+      "choice": "Sí. Biodiversidad→1.10",
+      "decided_at": "2026-09-22"
+    }
   ],
   "assumptions": [
     {
@@ -80,14 +86,169 @@ func TestLoadBoardDogfoodLLMShapes(t *testing.T) {
 	if len(b.What) != 2 || b.What[0].ID != "ac1" {
 		t.Fatalf("what: %+v", b.What)
 	}
-	if len(b.Decisions) != 1 || b.Decisions[0].Title == "" {
+	if len(b.Decisions) != 2 {
 		t.Fatalf("decisions: %+v", b.Decisions)
+	}
+	if b.Decisions[0].Title == "" {
+		t.Fatalf("decisions[0] text→title: %+v", b.Decisions[0])
+	}
+	if b.Decisions[1].Title == "" || !strings.Contains(b.Decisions[1].Detail, "Biodiversidad") {
+		t.Fatalf("decisions[1] question/choice: %+v", b.Decisions[1])
+	}
+	if !strings.Contains(b.Decisions[1].Detail, "Decided:") {
+		t.Fatalf("decided_at should fold into detail: %+v", b.Decisions[1])
 	}
 	if len(b.Assumptions) != 1 || !strings.Contains(b.Assumptions[0].Detail, "Breaks if wrong") {
 		t.Fatalf("assumptions: %+v", b.Assumptions)
 	}
 	if !b.Environment.IsolationWarning {
 		t.Fatal("expected isolation_warning string → true")
+	}
+}
+
+func TestLoadBoardPhaseNameOutcomeStatus(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "data.json")
+	body := `{
+  "version": "2",
+  "feature": "city-defaults",
+  "mode": "feature",
+  "lifecycle": "spec",
+  "autonomy": "in_the_loop",
+  "north_star": "City defaults",
+  "what": [{ "id": "ac1", "description": "defaults on create" }],
+  "phases": [
+    {
+      "id": "p1",
+      "name": "Defaults al crear ciudad",
+      "outcome": "Al crear una ciudad, A1–C3 nacen con mapping correcto.",
+      "status": "agreed"
+    },
+    {
+      "id": "p2",
+      "name": "Sync global catalog-aware",
+      "outcome": "El sync aplica reglas D8.",
+      "status": "agreed"
+    }
+  ],
+  "tasks": [],
+  "decisions": [],
+  "assumptions": [],
+  "tdd": { "passed": 0, "failed": 0, "total": 0, "cases": [] },
+  "audit": { "passed": false, "findings": [] },
+  "pending_promotions": [],
+  "environment": { "isolation_warning": false, "database_enabled": false }
+}`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := LoadBoard(path)
+	if err != nil {
+		t.Fatalf("LoadBoard: %v", err)
+	}
+	if len(b.Phases) != 2 {
+		t.Fatalf("phases: %+v", b.Phases)
+	}
+	if b.Phases[0].Name != "Defaults al crear ciudad" || b.Phases[0].Outcome == "" || b.Phases[0].Status != "agreed" {
+		t.Fatalf("phase0: %+v", b.Phases[0])
+	}
+	if b.Phases[0].Order != 1 || b.Phases[1].Order != 2 {
+		t.Fatalf("auto order want 1,2 got %d,%d", b.Phases[0].Order, b.Phases[1].Order)
+	}
+	if b.Phases[0].Title != b.Phases[0].Name {
+		t.Fatalf("title should mirror name: %+v", b.Phases[0])
+	}
+	if b.Phases[0].Label() != b.Phases[0].Name {
+		t.Fatalf("Label: %q", b.Phases[0].Label())
+	}
+}
+
+func TestLoadBoardPhaseLegacyTitleOrder(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "data.json")
+	body := `{
+  "version": "2",
+  "feature": "legacy",
+  "mode": "feature",
+  "lifecycle": "spec",
+  "what": [],
+  "phases": [{ "id": "p1", "title": "Old shape", "order": 3 }],
+  "tasks": [],
+  "decisions": [],
+  "assumptions": [],
+  "tdd": { "passed": 0, "failed": 0, "total": 0, "cases": [] },
+  "audit": { "passed": false, "findings": [] },
+  "pending_promotions": [],
+  "environment": { "isolation_warning": false }
+}`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := LoadBoard(path)
+	if err != nil {
+		t.Fatalf("LoadBoard: %v", err)
+	}
+	if b.Phases[0].Name != "Old shape" || b.Phases[0].Order != 3 {
+		t.Fatalf("legacy title/order: %+v", b.Phases[0])
+	}
+}
+
+func TestLoadBoardTaskPhaseAndFailed(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "data.json")
+	body := `{
+  "version": "2",
+  "feature": "city-defaults",
+  "mode": "feature",
+  "lifecycle": "build",
+  "what": [
+    { "id": "ac1", "description": "defaults on create" },
+    { "id": "ac2", "description": "i18n texts" }
+  ],
+  "phases": [
+    { "id": "p1", "name": "Defaults al crear ciudad", "outcome": "…", "status": "doing" }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "Seed A1–C3",
+      "status": "pending",
+      "phase": "p1",
+      "covers": ["ac1", "ac2"]
+    },
+    {
+      "id": "t2",
+      "title": "Attach catalog markdown",
+      "status": "failed",
+      "phase_id": "p1",
+      "covers": ["ac1"]
+    }
+  ],
+  "decisions": [],
+  "assumptions": [],
+  "tdd": { "passed": 0, "failed": 0, "total": 0, "cases": [] },
+  "audit": { "passed": false, "findings": [] },
+  "pending_promotions": [],
+  "environment": { "isolation_warning": false }
+}`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := LoadBoard(path)
+	if err != nil {
+		t.Fatalf("LoadBoard: %v", err)
+	}
+	if b.Tasks[0].Phase != "p1" || b.Tasks[0].Status != "pending" {
+		t.Fatalf("task0: %+v", b.Tasks[0])
+	}
+	if b.Tasks[1].Phase != "p1" || b.Tasks[1].Status != "failed" {
+		t.Fatalf("task1 phase_id alias / failed: %+v", b.Tasks[1])
+	}
+	if err := b.UpsertTaskFull("t3", "Retry attach", "doing", "", "p1", []string{"ac1"}); err != nil {
+		t.Fatal(err)
+	}
+	if b.Tasks[2].Phase != "p1" || b.Tasks[2].Status != "doing" {
+		t.Fatalf("upsert full: %+v", b.Tasks[2])
 	}
 }
 
@@ -207,6 +368,12 @@ func TestDefaultConfig(t *testing.T) {
 	}
 	if cfg.Isolation.Strict {
 		t.Fatal("isolation should be soft by default")
+	}
+	if cfg.Theme != ThemeDark {
+		t.Fatalf("default theme want dark, got %q", cfg.Theme)
+	}
+	if NormalizeTheme("") != ThemeDark || NormalizeTheme("LIGHT") != ThemeLight {
+		t.Fatal("NormalizeTheme failed")
 	}
 	if cfg.DashboardPort != 7432 || cfg.MCPHTTPPort != 7433 {
 		t.Fatalf("unexpected ports: %+v", cfg)

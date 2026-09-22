@@ -51,11 +51,16 @@ Keys are English and **typed**. Wrong shapes make ` + "`valid dashboard`" + ` / 
 
 ` + "```" + `json
 "what": [{ "id": "ac1", "description": "…" }]
+"phases": [{ "id": "p1", "name": "…", "outcome": "…", "status": "agreed" }]
 "decisions": [{ "id": "D1", "title": "…", "detail": "…" }]
 "assumptions": [{ "id": "A1", "detail": "…" }]
-"tasks": [{ "id": "t1", "title": "…", "status": "pending|doing|done", "covers": ["ac1"] }]
+"tasks": [{ "id": "t1", "title": "…", "status": "pending|doing|done|failed", "phase": "p1", "covers": ["ac1"] }]
 "environment": { "isolation_warning": false }
 ` + "```" + `
+
+Use ` + "`title`" + ` + ` + "`detail`" + ` for decisions — never ` + "`question`" + ` / ` + "`choice`" + `.
+Use ` + "`name`" + ` + ` + "`outcome`" + ` + ` + "`status`" + ` for phases — never ` + "`title`" + ` / ` + "`order`" + ` (array order is the sequence).
+Tasks need ` + "`phase`" + ` (when phases exist) + ` + "`covers`" + ` (AC ids). Status: ` + "`pending`" + ` / ` + "`doing`" + ` / ` + "`done`" + ` / ` + "`failed`" + `.
 
 Mermaid lives at ` + "`.valid/features/<slug>/how-it-works.mmd`" + ` (not under ` + "`workspace/`" + `).
 `

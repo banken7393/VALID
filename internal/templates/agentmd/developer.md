@@ -2,7 +2,7 @@
 
 ## Role
 
-Implement inside the feature quarantine with TDD. Invoked by skill **build**
+Implement inside the feature quarantine with TDD. Invoked by skill **build-feature**
 (and **patch**). For a bounded autonomous chunk, skill **delegate** uses agent
 **delegate** instead (or as well).
 
@@ -19,7 +19,8 @@ Never switch to `above_the_loop` yourself. The human (or skill **delegate**) set
 
 - Read `.valid/config.json` → `test_command` (any language). That command is truth.
 - Work in `.valid/worktrees/<slug>/` when it exists; soft-warn on the board if you cannot.
-- Keep `tasks[]` + `covers` current by **editing** `data.json` as you go.
+- **Board-first status:** the moment you start a task, **edit `data.json` first** and set `"status": "doing"` (and the phase to `doing` if needed) **before** any test or code. Close with `done` or `failed` before starting the next task. One task in `doing` at a time. Chat is not the board — the dashboard only sees `data.json`.
+- Keep `tasks[]` shape valid: `id`, `title`, `status` (`pending`|`doing`|`done`|`failed`), `phase` (when `phases[]` exists), and `covers` (AC ids).
 - Red → green → refactor; run tests; write honest `tdd.cases` and aggregates.
 - Record non-obvious choices in `decisions[]`.
 - Adjust feature Dev Container `BASE_IMAGE` / deps when needed; log in `workspace/deps-delta.md` and `pending_promotions[]`.
@@ -27,6 +28,8 @@ Never switch to `above_the_loop` yourself. The human (or skill **delegate**) set
 
 ## You do not
 
+- Start implementing while the active task is still `pending` on the board.
+- Leave a task `doing` when you have moved on.
 - Mark green without running `test_command`.
 - Expand scope silently — new behaviour needs a new AC with the human.
 - Use MCP to mutate TDD/ACs.
@@ -34,4 +37,4 @@ Never switch to `above_the_loop` yourself. The human (or skill **delegate**) set
 
 ## Persistence
 
-Edit the board files. Optional helpers: `valid report`, `valid task` — not required if you write valid JSON.
+Edit the board files. Optional helpers: `valid report`, `valid task` — not required if you write valid JSON. Status changes belong in `data.json` immediately.

@@ -39,6 +39,10 @@ const (
 	AutonomyInTheLoop    = "in_the_loop"
 	AutonomyAboveTheLoop = "above_the_loop"
 
+	// Dashboard UI themes (.valid/config.json "theme").
+	ThemeDark  = "dark"
+	ThemeLight = "light"
+
 	// Test statuses.
 	TestPass    = "pass"
 	TestFail    = "fail"
@@ -127,42 +131,135 @@ func looksLikeACID(s string) bool {
 	return strings.HasPrefix(lower, "ac") || strings.HasPrefix(lower, "what")
 }
 
-// Phase is a delivery phase on the board.
+// Phase is a delivery slice on the board.
+// Canonical keys: id, name, outcome, status. Sequence = array order (do not write order).
 type Phase struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Order int    `json:"order"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Outcome string `json:"outcome,omitempty"`
+	Status  string `json:"status,omitempty"` // agreed|pending|doing|done
+	// Title is a legacy alias for Name (older boards); prefer Name.
+	Title string `json:"title,omitempty"`
+	// Order is optional legacy; if 0, LoadBoard fills index+1. Prefer array position.
+	Order int `json:"order,omitempty"`
 }
 
-// Task is a work item that may cover one or more ACs.
+// UnmarshalJSON accepts name/outcome/status, or legacy title/order.
+func (p *Phase) UnmarshalJSON(data []byte) error {
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+	var wire struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Title   string `json:"title"`
+		Outcome string `json:"outcome"`
+		Status  string `json:"status"`
+		Order   int    `json:"order"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	p.ID = strings.TrimSpace(wire.ID)
+	p.Name = strings.TrimSpace(wire.Name)
+	p.Title = strings.TrimSpace(wire.Title)
+	p.Outcome = strings.TrimSpace(wire.Outcome)
+	p.Status = strings.TrimSpace(wire.Status)
+	p.Order = wire.Order
+	if p.Name == "" {
+		p.Name = p.Title
+	}
+	if p.Title == "" {
+		p.Title = p.Name
+	}
+	return nil
+}
+
+// Label returns the short phase name (name, else legacy title, else id).
+func (p Phase) Label() string {
+	if s := strings.TrimSpace(p.Name); s != "" {
+		return s
+	}
+	if s := strings.TrimSpace(p.Title); s != "" {
+		return s
+	}
+	return strings.TrimSpace(p.ID)
+}
+
+// Task is a work item that may cover one or more ACs and belong to a phase.
 type Task struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
-	Status      string   `json:"status"` // pending|doing|done
+	Status      string   `json:"status"`          // pending|doing|done|failed
+	Phase       string   `json:"phase,omitempty"` // phases[].id
 	Covers      []string `json:"covers"`
 	Description string   `json:"description,omitempty"`
 }
 
-// Decision records a product/tech choice.
-type Decision struct {
-	ID     string   `json:"id"`
-	Title  string   `json:"title"`
-	Detail string   `json:"detail,omitempty"`
-	Tags   []string `json:"tags,omitempty"`
+// UnmarshalJSON accepts phase, or aliases phase_id / phaseId.
+func (t *Task) UnmarshalJSON(data []byte) error {
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+	var wire struct {
+		ID           string   `json:"id"`
+		Title        string   `json:"title"`
+		Status       string   `json:"status"`
+		Phase        string   `json:"phase"`
+		PhaseID      string   `json:"phase_id"`
+		PhaseIDCamel string   `json:"phaseId"`
+		Covers       []string `json:"covers"`
+		Description  string   `json:"description"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	t.ID = strings.TrimSpace(wire.ID)
+	t.Title = strings.TrimSpace(wire.Title)
+	t.Status = strings.TrimSpace(wire.Status)
+	t.Phase = strings.TrimSpace(wire.Phase)
+	if t.Phase == "" {
+		t.Phase = strings.TrimSpace(wire.PhaseID)
+	}
+	if t.Phase == "" {
+		t.Phase = strings.TrimSpace(wire.PhaseIDCamel)
+	}
+	t.Covers = wire.Covers
+	if t.Covers == nil {
+		t.Covers = []string{}
+	}
+	t.Description = strings.TrimSpace(wire.Description)
+	return nil
 }
 
-// UnmarshalJSON accepts title/detail or a single "text" field (common LLM shape).
+// Decision records a product/tech choice.
+type Decision struct {
+	ID        string   `json:"id"`
+	Title     string   `json:"title"`
+	Detail    string   `json:"detail,omitempty"`
+	Question  string   `json:"question,omitempty"`   // LLM alias; kept for dashboard fallback
+	Choice    string   `json:"choice,omitempty"`     // LLM alias; kept for dashboard fallback
+	DecidedAt string   `json:"decided_at,omitempty"` // optional; also folded into Detail on load
+	Tags      []string `json:"tags,omitempty"`
+}
+
+// UnmarshalJSON accepts title/detail, text, or question/choice (common LLM shapes).
 func (d *Decision) UnmarshalJSON(data []byte) error {
 	data = []byte(strings.TrimSpace(string(data)))
 	if len(data) == 0 || string(data) == "null" {
 		return nil
 	}
 	var wire struct {
-		ID     string   `json:"id"`
-		Title  string   `json:"title"`
-		Detail string   `json:"detail"`
-		Text   string   `json:"text"`
-		Tags   []string `json:"tags"`
+		ID        string   `json:"id"`
+		Title     string   `json:"title"`
+		Detail    string   `json:"detail"`
+		Text      string   `json:"text"`
+		Question  string   `json:"question"`
+		Choice    string   `json:"choice"`
+		DecidedAt string   `json:"decided_at"`
+		Tags      []string `json:"tags"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
@@ -170,7 +267,16 @@ func (d *Decision) UnmarshalJSON(data []byte) error {
 	d.ID = wire.ID
 	d.Title = strings.TrimSpace(wire.Title)
 	d.Detail = strings.TrimSpace(wire.Detail)
+	d.Question = strings.TrimSpace(wire.Question)
+	d.Choice = strings.TrimSpace(wire.Choice)
+	d.DecidedAt = strings.TrimSpace(wire.DecidedAt)
 	d.Tags = wire.Tags
+	if d.Title == "" {
+		d.Title = d.Question
+	}
+	if d.Detail == "" {
+		d.Detail = d.Choice
+	}
 	text := strings.TrimSpace(wire.Text)
 	if text != "" {
 		if d.Title == "" {
@@ -178,6 +284,11 @@ func (d *Decision) UnmarshalJSON(data []byte) error {
 		} else if d.Detail == "" {
 			d.Detail = text
 		}
+	}
+	if d.DecidedAt != "" && d.Detail != "" && !strings.Contains(d.Detail, d.DecidedAt) {
+		d.Detail = d.Detail + "\nDecided: " + d.DecidedAt
+	} else if d.DecidedAt != "" && d.Detail == "" {
+		d.Detail = "Decided: " + d.DecidedAt
 	}
 	return nil
 }
@@ -325,11 +436,11 @@ type Promotion struct {
 
 // Paths points at feature-local files.
 type Paths struct {
-	BoardDir      string `json:"board_dir"`
-	HowItWorks    string `json:"how_it_works,omitempty"`
-	WorkspaceDir  string `json:"workspace_dir,omitempty"`
-	DepsDelta     string `json:"deps_delta,omitempty"`
-	Worktree      string `json:"worktree,omitempty"`
+	BoardDir     string `json:"board_dir"`
+	HowItWorks   string `json:"how_it_works,omitempty"`
+	WorkspaceDir string `json:"workspace_dir,omitempty"`
+	DepsDelta    string `json:"deps_delta,omitempty"`
+	Worktree     string `json:"worktree,omitempty"`
 }
 
 // Board is the per-feature contract under .valid/features/<slug>/data.json.
@@ -379,12 +490,23 @@ type Config struct {
 	MCPHTTPPort          int             `json:"mcp_http_port"`          // valid mcp --http
 	FeatureDashboardPort int             `json:"feature_dashboard_port"` // 0 = auto from offset + slug
 	FeaturePortOffset    int             `json:"feature_port_offset"`    // added to dashboard_port when auto
+	Theme                string          `json:"theme"`                  // dark (default) | light — dashboard UI
 	Isolation            IsolationConfig `json:"isolation"`
 	Database             DatabaseConfig  `json:"database"`
 	MainDevcontainer     string          `json:"main_devcontainer"`
 	ScriptsRoot          string          `json:"scripts_root"` // project MCP script nodes
 	MCP                  MCPConfig       `json:"mcp"`
 	Language             string          `json:"language"`
+}
+
+// NormalizeTheme returns dark|light; empty/unknown → dark.
+func NormalizeTheme(theme string) string {
+	switch strings.ToLower(strings.TrimSpace(theme)) {
+	case ThemeLight:
+		return ThemeLight
+	default:
+		return ThemeDark
+	}
 }
 
 // DefaultConfig returns stock project config (database off, soft isolation).
@@ -396,6 +518,7 @@ func DefaultConfig() Config {
 		MCPHTTPPort:          7433,
 		FeatureDashboardPort: 0,
 		FeaturePortOffset:    100,
+		Theme:                ThemeDark,
 		Isolation:            IsolationConfig{Strict: false},
 		Database:             DatabaseConfig{Enabled: false, Recipe: ""},
 		MainDevcontainer:     ".devcontainer/devcontainer.json",
@@ -460,7 +583,7 @@ var validTestStatuses = map[string]struct{}{
 }
 
 var validTaskStatus = map[string]struct{}{
-	"pending": {}, "doing": {}, "done": {},
+	"pending": {}, "doing": {}, "done": {}, "failed": {},
 }
 
 // NewBoard creates a fresh board for a feature/patch/minipatch.
@@ -469,15 +592,15 @@ func NewBoard(feature, mode string) *Board {
 		mode = ModeFeature
 	}
 	return &Board{
-		Version:   Version,
-		Feature:   feature,
-		Mode:      mode,
-		Lifecycle: LifePlan,
-		Autonomy:  AutonomyInTheLoop,
-		What:      []AcceptanceCriterion{},
-		Phases:    []Phase{},
-		Tasks:     []Task{},
-		Decisions: []Decision{},
+		Version:     Version,
+		Feature:     feature,
+		Mode:        mode,
+		Lifecycle:   LifePlan,
+		Autonomy:    AutonomyInTheLoop,
+		What:        []AcceptanceCriterion{},
+		Phases:      []Phase{},
+		Tasks:       []Task{},
+		Decisions:   []Decision{},
 		Assumptions: []Assumption{},
 		TDD: TDDState{
 			Cases: []TestCase{},
@@ -663,8 +786,14 @@ func (b *Board) ApplyReport(status, testName, output, phase string) error {
 	return b.Validate()
 }
 
-// UpsertTask adds or updates a task.
+// UpsertTask adds or updates a task. Pass phase "" to leave unchanged on update;
+// on insert, empty phase is allowed (optional).
 func (b *Board) UpsertTask(id, title, status, description string, covers []string) error {
+	return b.UpsertTaskFull(id, title, status, description, "", covers)
+}
+
+// UpsertTaskFull is UpsertTask plus optional phase id (phases[].id).
+func (b *Board) UpsertTaskFull(id, title, status, description, phase string, covers []string) error {
 	if b == nil {
 		return errors.New("board is nil")
 	}
@@ -676,11 +805,12 @@ func (b *Board) UpsertTask(id, title, status, description string, covers []strin
 		status = "pending"
 	}
 	if _, ok := validTaskStatus[status]; !ok {
-		return fmt.Errorf("status must be pending|doing|done (got %q)", status)
+		return fmt.Errorf("status must be pending|doing|done|failed (got %q)", status)
 	}
 	if covers == nil {
 		covers = []string{}
 	}
+	phase = strings.TrimSpace(phase)
 	for i := range b.Tasks {
 		if b.Tasks[i].ID == id {
 			if title != "" {
@@ -689,6 +819,9 @@ func (b *Board) UpsertTask(id, title, status, description string, covers []strin
 			b.Tasks[i].Status = status
 			if description != "" {
 				b.Tasks[i].Description = description
+			}
+			if phase != "" {
+				b.Tasks[i].Phase = phase
 			}
 			if len(covers) > 0 {
 				b.Tasks[i].Covers = covers
@@ -701,7 +834,7 @@ func (b *Board) UpsertTask(id, title, status, description string, covers []strin
 		title = id
 	}
 	b.Tasks = append(b.Tasks, Task{
-		ID: id, Title: title, Status: status, Covers: covers, Description: description,
+		ID: id, Title: title, Status: status, Phase: phase, Covers: covers, Description: description,
 	})
 	b.Touch()
 	return b.Validate()
@@ -765,10 +898,29 @@ func LoadBoard(path string) (*Board, error) {
 		b.Autonomy = AutonomyInTheLoop
 	}
 	backfillWhatIDs(&b)
+	normalizePhases(&b)
 	if err := b.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid board: %w", err)
 	}
 	return &b, nil
+}
+
+// normalizePhases fills Order from array index when missing, and mirrors name↔title.
+func normalizePhases(b *Board) {
+	if b == nil {
+		return
+	}
+	for i := range b.Phases {
+		if b.Phases[i].Name == "" {
+			b.Phases[i].Name = b.Phases[i].Title
+		}
+		if b.Phases[i].Title == "" {
+			b.Phases[i].Title = b.Phases[i].Name
+		}
+		if b.Phases[i].Order <= 0 {
+			b.Phases[i].Order = i + 1
+		}
+	}
 }
 
 // backfillWhatIDs assigns ac1..acN when the LLM wrote string ACs without ids.
@@ -811,6 +963,7 @@ func SaveBoard(path string, b *Board) error {
 	if b.Autonomy == "" {
 		b.Autonomy = AutonomyInTheLoop
 	}
+	normalizePhases(b)
 	b.Touch()
 	if err := b.Validate(); err != nil {
 		return fmt.Errorf("invalid board: %w", err)
@@ -900,6 +1053,7 @@ func LoadConfig(root string) (Config, error) {
 	if strings.TrimSpace(cfg.ScriptsRoot) == "" {
 		cfg.ScriptsRoot = ".valid/scripts"
 	}
+	cfg.Theme = NormalizeTheme(cfg.Theme)
 	return cfg, nil
 }
 

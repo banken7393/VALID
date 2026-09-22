@@ -10,6 +10,15 @@ When working in a repo initialized with VALID:
 
 1. Skills in `.valid/skills/` are **manual** (`disable-model-invocation: true`) — invoke them explicitly (`/plan`, `/spec`, `/build-feature`, `/audit`, `/finish`, `/delegate`, …). Do not auto-run them.
 2. Invoke agents in `.valid/agents/` when a skill says so (`interviewer`, `developer`, `reviewer`, `delegate`). Board `autonomy`: `in_the_loop` (default) or `above_the_loop`.
-3. **Edit** `.valid/features/<slug>/data.json`, Mermaid, and workspace files yourself. Use the `valid` CLI for scaffold (`feature`), gate, promote, merge, and env — optional helpers (`board`/`task`/`report`) only if useful.
+3. **Edit** `.valid/features/<slug>/data.json`, Mermaid, and workspace files yourself. Use the `valid` CLI for scaffold (`feature`), gate, promote, merge, env, `paths`, and `doctor` — optional helpers (`board`/`task`/`report`) only if useful.
 4. Use MCP `valid` tools for `.valid/knowledge/**` and project scripts under `.valid/scripts/` (each script is an MCP tool). Never use MCP for TDD/ACs.
 5. Feature Dev Containers live under `.valid/worktrees/<slug>/` only; never rewrite the principal `.devcontainer/`. Ports come from `.valid/config.json`.
+
+## Path contract (feature / patch)
+
+Stay in the **principal** repo folder (multi-agent control plane). Do **not** relocate the IDE into the worktree.
+
+- Run `valid paths <slug>` → obey `CODE_ROOT` for **all product code**.
+- Board / Mermaid / feature notes → `.valid/features/<slug>/` only.
+- Never edit product files on the principal tree during build. That is `code_outside_worktree` (`valid doctor` / `valid gate`).
+- `isolation.strict: true` in `.valid/config.json` makes contamination fail the gate.

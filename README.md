@@ -152,6 +152,8 @@ VALID’s isolation story is grounded in the open **[Dev Containers](https://con
 
 **Soft by design** if Docker / `devcontainer` CLI is missing: VALID still scaffolds the board and worktree and sets `isolation_warning`. Full quarantine needs Docker + Dev Containers CLI (`@devcontainers/cli`). **Minipatch** deliberately skips worktree/DC for tiny edits (same gates, no quarantine).
 
+**Path contract (multi-agent friendly):** keep Cursor/IDE on the **principal** folder. Agents write product code under `.valid/worktrees/<slug>/` (`CODE_ROOT` from `valid paths <slug>`), and board files under `.valid/features/<slug>/`. You do **not** need to open the worktree as a separate workspace. Dirty product files on the principal tree are finding `code_outside_worktree` (`valid doctor` / `valid gate`). With `isolation.strict: true`, that fails the gate.
+
 So: VALID is a **method + board + plumbing** layer **on top of** Dev Container tech — not a replacement for it.
 
 ---
@@ -333,10 +335,17 @@ By default the gate:
 | `no_tests` / `tests_not_green` | Suite missing or red |
 | `how_it_works_missing` / `_stub` / `_invalid` | Mermaid absent, scaffold stub, or not Mermaid |
 | `worktree_missing` | Feature/patch worktree gone or empty path |
-| `isolation_warning` | Soft (unless `isolation.strict`) — expected for minipatch |
+| `code_outside_worktree` | Product files dirty on the principal tree (should be under `CODE_ROOT`) |
+| `isolation_warning` | Soft (unless `isolation.strict`) — DC down / board flag / contamination side-effect |
 
 `--trust-board` skips executing `test_command` and only inspects board evidence (tests / CI helpers — not the product default for features).
 
+```bash
+valid paths <slug>    # CODE_ROOT, BOARD, …
+valid doctor <slug>   # path contract + principal contamination scan
+```
+
+`isolation.strict: true` in `.valid/config.json` elevates `code_outside_worktree` and `isolation_warning` to **errors** (minipatch exempt).
 ---
 
 ## Autonomy (in / above the loop)
@@ -491,7 +500,7 @@ If you want **promote env** later, ensure a principal `.devcontainer/` already e
 | `main_devcontainer` | Principal DC JSON path (never invented) |
 | `scripts_root` | MCP script nodes |
 | `language` | Board prose: `repo` = match the repository language, or `en` / `es` / … |
-| `isolation.strict` | If `true`, isolation warnings fail the gate (minipatch soft isolation is exempt) |
+| `isolation.strict` | If `true`, `code_outside_worktree` and `isolation_warning` **fail** the gate / doctor (minipatch exempt) |
 | `database.enabled` | Default `false` — do not use the principal DSN from feature work |
 | `database.recipe` | How to start an ephemeral DB for features |
 | `mcp.knowledge_root` | Knowledge corpus root |
@@ -762,6 +771,8 @@ valid feature new <slug> [--mode feature|patch|minipatch] [--north-star …] [--
 valid feature delete <slug> [--keep-env]
 
 valid gate <slug> [--trust-board]
+valid doctor <slug>               # path contract + principal contamination
+valid paths <slug>                # print CODE_ROOT / BOARD / …
 valid promote knowledge|env <slug> [--dry-run]
 valid merge <slug> [--skip-gate] [--allow-early] [--allow-current-head]
 valid env up|down <slug>
@@ -782,7 +793,9 @@ valid --repo <path> …             # override git root discovery
 | `install` | Wire IDE adapters + refresh skills |
 | `feature new` | Board + (usually) worktree/DC |
 | `feature delete` | Abandon — no merge |
-| `gate` | AC coverage + execute `test_command` |
+| `gate` | AC coverage + execute `test_command` + isolation scan |
+| `doctor` | Path contract + principal contamination (`code_outside_worktree`) |
+| `paths` | Print `CODE_ROOT` / `BOARD` / … for agents |
 | `promote knowledge` | High-bar knowledge copy |
 | `promote env` | Fail-hard merge into principal DC |
 | `merge` | Merge feature branch → tear down env |
@@ -800,6 +813,7 @@ valid --repo <path> …             # override git root discovery
 | Dashboard empty / only errors | Same as above, or wrong `--feature` | Check slug; fix `data.json` |
 | Mermaid missing in UI | File under `workspace/` instead of feature root | Put diagram in `.valid/features/<slug>/how-it-works.mmd` |
 | `isolation_warning` after `feature new` | `devcontainer up` failed or CLI missing | `valid env up <slug>` to see the real error; install `@devcontainers/cli` + Docker-in-DC |
+| Gate `code_outside_worktree` | Product files dirty on principal | Move edits into `CODE_ROOT` (`valid paths`); clean principal; `valid doctor <slug>` |
 | Gate `worktree_missing` | Worktree deleted / path wrong | Restore worktree or abandon/recreate feature |
 | Gate `no_tests` / `tests_not_green` | Suite not run or red | Fix tests; re-run `/audit` |
 | Gate `ac_uncovered` | AC without `tasks[].covers` | Add/fix tasks on the board |

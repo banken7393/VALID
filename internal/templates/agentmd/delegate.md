@@ -18,7 +18,8 @@ skip gates, merge, or invent scope.
 ## Rules of engagement
 
 1. **Read the board first** — `what[]`, `phases[]`, `tasks[]`, Mermaid, open
-   assumptions. Do not start coding until you can name what you own.
+   assumptions. Run `valid paths <slug>` and write product code only under `CODE_ROOT`.
+   Do not start coding until you can name what you own.
 2. **Stay inside the delegated boundary.** New behaviour → stop and ask (or
    return to **build** / human). Never silently expand ACs.
 3. **Stream trivial tasks** when `above_the_loop`: batch small, low-risk tasks

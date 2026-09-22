@@ -110,5 +110,9 @@ scope: project
 
 # Worktree Quarantine
 
-Prefer skill **plan** / **patch** (CLI ` + "`valid feature new`" + `) so work lands in ` + "`.valid/worktrees/<slug>/`" + ` on branch ` + "`feature/<slug>`" + ` until **finish** merges and tears down the env. Do not treat the principal Dev Container as a scratch pad for unproven deps.
+Prefer skill **plan** / **patch** (CLI ` + "`valid feature new`" + `) so work lands in ` + "`.valid/worktrees/<slug>/`" + ` on branch ` + "`feature/<slug>`" + ` until **finish** merges and tears down the env.
+
+**Path contract:** keep the IDE on the principal repo (multi-agent hub). Write product code only under ` + "`CODE_ROOT`" + ` from ` + "`valid paths <slug>`" + `. Board/Mermaid stay under ` + "`.valid/features/<slug>/`" + `. Dirty product files on the principal tree are ` + "`code_outside_worktree`" + ` (` + "`valid doctor`" + ` / gate). Set ` + "`isolation.strict: true`" + ` in config to make that fail the gate.
+
+Do not treat the principal Dev Container as a scratch pad for unproven deps.
 `

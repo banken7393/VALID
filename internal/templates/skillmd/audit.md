@@ -24,7 +24,7 @@ Audit answers **is this honest and mergeable** — grade the **result**, not the
 
 ## 1. Resolve and invoke reviewer
 
-1. Resolve `slug`. Prefer the feature worktree for `git diff` / `git status`.
+1. Resolve `slug`. Prefer `git diff` / `git status` inside `CODE_ROOT` from `valid paths <slug>` (feature worktree). Also run `valid doctor <slug>` — principal contamination is a hard review issue.
 2. Load and follow `.valid/agents/reviewer.md`.
 3. Read the board end-to-end: `what`, `tasks`, `covers`, `tdd`, `assumptions`, Mermaid, `pending_promotions`.
 
@@ -34,6 +34,7 @@ Walk the board against the working tree:
 
 | Check | Hard? |
 |-------|-------|
+| Feature product code only under `CODE_ROOT` (`valid doctor` / `code_outside_worktree`) | Yes when `isolation.strict`; otherwise fix before finish |
 | Each task `status` matches reality (`done` only if truly done) | Yes — fix board or code |
 | Each AC is satisfied by code, or explicitly deferred by the human | Yes |
 | Every `what[].id` appears in some `tasks[].covers` | Yes (gate) |
@@ -41,8 +42,7 @@ Walk the board against the working tree:
 | Mermaid still draws the mechanism that shipped | Soft → redraw or note stale |
 | Open assumptions resolved, invalidated (with cost), or explicitly deferred | Soft → surface |
 | Behaviour built beyond the WHAT | Soft → add AC or strip code |
-| Isolation / env warnings only | Soft — never sole hard fail |
-
+| DC / env soft warnings only | Soft — never sole hard fail unless `isolation.strict` |
 ## 3. Evidence rules (reviewer lens)
 
 For each load-bearing claim on the board (“AC ac3 is done”, “tests prove X”):
@@ -62,10 +62,9 @@ valid gate <slug>
 ```
 
 Hard fail when any AC is uncovered, or when there are no executable tests / tests are not green.  
-Soft: `isolation_warning` alone does not fail the gate.
+`code_outside_worktree` / `isolation_warning`: soft by default; **hard** when `.valid/config.json` → `isolation.strict=true` (minipatch exempt).
 
-You may perform the same checks by reading the board, but the CLI gate is the shared mechanical record — prefer running it.
-
+You may perform the same checks by reading the board, but the CLI gate is the shared mechanical record — prefer running it. Also useful: `valid doctor <slug>` before gate.
 ## 5. Leave
 
 - Gate red or review blocked → return to **build**, fix, re-audit.

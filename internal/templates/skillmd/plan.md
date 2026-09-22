@@ -121,7 +121,7 @@ valid feature new <slug> --mode feature --north-star "…"
    - Board already exists → **read and resume**. Never overwrite Plan outputs without consent.
    - Soft isolation: if Dev Container up fails, warn on the board (`environment.isolation_warning`) and continue; do not hard-stop.
 
-4. Keep open: `.valid/features/<slug>/data.json` and the worktree `.valid/worktrees/<slug>/`.
+4. Keep open: `.valid/features/<slug>/data.json` (board) and write future product code under `.valid/worktrees/<slug>/` (`valid paths <slug>` → `CODE_ROOT`). Stay in the principal IDE folder.
 5. Optional live view: `valid dashboard --feature <slug>` (port from `dashboard_port` in config).
 
 ## 1. Interview until nothing blocking is open

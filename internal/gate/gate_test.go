@@ -2,6 +2,7 @@ package gate
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -154,6 +155,55 @@ func TestGateLiveRunClearsStaleTDD(t *testing.T) {
 	}
 	if !b.TestsGreen() || b.TDD.Failed != 0 {
 		t.Fatalf("expected only live suite evidence, got %+v", b.TDD)
+	}
+}
+
+func TestGateCodeOutsideWorktreeStrict(t *testing.T) {
+	dir := t.TempDir()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+	run("git", "init")
+	run("git", "config", "user.email", "t@example.com")
+	run("git", "config", "user.name", "t")
+	_ = os.WriteFile(filepath.Join(dir, "README.md"), []byte("x\n"), 0o644)
+	run("git", "add", "README.md")
+	run("git", "commit", "-m", "init")
+
+	wt := filepath.Join(dir, ".valid", "worktrees", "pay")
+	_ = os.MkdirAll(wt, 0o755)
+	_ = os.WriteFile(filepath.Join(dir, "leak.go"), []byte("package leak\n"), 0o644)
+
+	b := schema.NewBoard("pay", schema.ModeFeature)
+	b.Lifecycle = schema.LifeAudit
+	b.HowItWorks = "flowchart TD\n  client[Client] -->|POST /pay| api[API]\n  api --> db[(DB)]\n  api -->|webhook| provider[Provider]\n"
+	_ = b.SetWhat([]schema.AcceptanceCriterion{{ID: "ac1", Description: "charge card"}})
+	_ = b.UpsertTask("t1", "charge", "done", "", []string{"ac1"})
+	_ = b.ApplyReport(schema.TestPass, "TestCharge", "", "")
+	b.Environment.WorktreePath = wt
+
+	cfg := schema.DefaultConfig()
+	cfg.Isolation.Strict = true
+	res := trustRun(dir, b, cfg)
+	if res.Passed {
+		t.Fatal("expected fail under isolation.strict with principal contamination")
+	}
+	found := false
+	for _, f := range res.Findings {
+		if f.Code == "code_outside_worktree" && f.Severity == schema.SevError {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected code_outside_worktree error, %#v", res.Findings)
+	}
+	if !b.Environment.IsolationWarning {
+		t.Fatal("expected isolation_warning set on board when contaminated")
 	}
 }
 

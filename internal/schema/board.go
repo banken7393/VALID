@@ -467,6 +467,8 @@ type Board struct {
 }
 
 // IsolationConfig controls soft vs hard isolation.
+// Soft (default): code_outside_worktree and isolation_warning are warnings.
+// Strict: those findings become errors and fail valid gate / valid doctor.
 type IsolationConfig struct {
 	Strict bool `json:"strict"`
 }

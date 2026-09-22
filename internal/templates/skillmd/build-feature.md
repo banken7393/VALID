@@ -31,9 +31,21 @@ Board: `.valid/features/<slug>/data.json` — single source of truth. **You edit
 ## 0. Resolve
 
 1. Arg given → that slug. None → the unfinished feature board under `.valid/features/*/`; several → ask. None anywhere → “Run **spec** first” and stop.
-2. If `.valid/worktrees/<slug>/` exists and the session is outside it: prefer entering it before writing code. Soft-warn and continue if you must work outside (`environment.isolation_warning`).
-3. Invoke agent **developer** (`.valid/agents/developer.md`) for implementation focus; you still own the board file.
+2. **Path contract (non-negotiable for feature/patch):** stay in the **principal** repo folder (multi-agent hub). Print and obey:
 
+```bash
+valid paths <slug>
+```
+
+| Path | Write here |
+|------|------------|
+| `CODE_ROOT` (`.valid/worktrees/<slug>/`) | **All feature product code** |
+| `BOARD` / Mermaid / `WORKSPACE` under `.valid/features/<slug>/` | Board only |
+| Principal tree outside `.valid/` | **Forbidden** during build (contamination) |
+
+Do **not** “open the worktree as the IDE root”. Resolve file paths under `CODE_ROOT`. If you already dirtied the principal: stop, move changes into `CODE_ROOT`, clean the principal, run `valid doctor <slug>`.
+3. Soft env isolation (`devcontainer up` failed) → set `environment.isolation_warning` and continue; still write code under `CODE_ROOT`.
+4. Invoke agent **developer** (`.valid/agents/developer.md`) for implementation focus; you still own the board file.
 ## 1. Read
 
 Read `data.json` (the WHAT), Mermaid how-it-works, and MCP knowledge (conventions/decisions) read-only. The drawing is the map for decisions and every task.
@@ -95,8 +107,7 @@ For **every** task, in this order:
 1. **Claim it on the board first** — edit `data.json` and set that task `"status": "doing"` (and the active phase to `"doing"` if it is not already). Do this **before** any test, code, or tool call for that task. If you skip this, the board lies (still `pending` while you are mid-work).
 2. Then decide detail with the human when there is a real choice (always in `in_the_loop`; on substantial work in `above_the_loop`).
 3. **Red** — write a failing test; set `tdd.phase` to `red`; record the failing case under `tdd.cases`.
-4. Run `test_command` **inside the feature Dev Environment** when available (soft warn if not).
-5. **Green** — implement until green; update cases to `pass`; `tdd.phase` = `green`.
+4. Run `test_command` **inside `CODE_ROOT`** (feature worktree / Dev Environment when available). Soft warn if the DC is down — still do not write product files on the principal tree.5. **Green** — implement until green; update cases to `pass`; `tdd.phase` = `green`.
 6. **Refactor** — clean up; keep green; `tdd.phase` = `refactor` then back to green.
 7. **Close it on the board immediately** — `"status": "done"` only when covered ACs are honestly satisfied; `"failed"` if blocked or the suite stays red for that work. Never leave a task `doing` while you start the next one. Never leave a lie as `done`.
 8. Keep `phase` and `covers` accurate as you edit the board.
@@ -140,7 +151,8 @@ All tasks done and the WHAT looks implemented with green tests: tell the story i
 ## Guardrails
 
 - **Board-first:** never start code or tests for a task while it is still `pending` — flip to `doing` in `data.json` first; flip to `done`/`failed` before picking up the next task.
-- Prefer feature worktree + DC. Soft isolation warning if outside — say so on the board.
+- **Path contract:** product code only under `CODE_ROOT` from `valid paths <slug>`. Principal stays the control plane. Run `valid doctor <slug>` if unsure; `isolation.strict` makes contamination fail the gate.
+- Prefer feature worktree + DC. Soft isolation warning if DC is down — say so on the board (`isolation_warning`).
 - Never mark tests green without running `test_command`.
 - MCP is knowledge RAG **plus** project scripts; do not use it to fake TDD/ACs.
 - No silent scope expansion: new behaviour needs a new AC (edit `what[]` with the human).

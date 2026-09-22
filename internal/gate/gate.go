@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/banken7393/valid/internal/isolation"
 	"github.com/banken7393/valid/internal/schema"
 )
 
@@ -48,24 +49,12 @@ func RunWithOptions(repoRoot string, b *schema.Board, cfg schema.Config, opts Op
 		}
 	}
 
-	// Soft isolation is expected for minipatch; do not warn (or trip isolation.strict).
-	if b.Mode != schema.ModeMinipatch {
-		if b.Environment.IsolationWarning || b.Environment.WorktreePath == "" {
-			findings = append(findings, schema.Finding{
-				Code:     "isolation_warning",
-				Severity: schema.SevWarning,
-				Message:  "working outside feature Dev Environment (soft isolation)",
-			})
-		}
-		if wt := strings.TrimSpace(b.Environment.WorktreePath); wt != "" {
-			if _, err := os.Stat(wt); err != nil {
-				findings = append(findings, schema.Finding{
-					Code:     "worktree_missing",
-					Severity: schema.SevError,
-					Message:  "feature worktree path missing: " + wt,
-				})
-			}
-		}
+	// Path contract: principal = control plane; feature code lives in the worktree.
+	// Minipatch is exempt. isolation.strict elevates contamination / soft warnings to errors.
+	isoFindings := isolation.Inspect(repoRoot, b, cfg)
+	findings = append(findings, isoFindings...)
+	if isolation.HasCodeOutside(isoFindings) {
+		b.Environment.IsolationWarning = true
 	}
 
 	// How-it-works required past plan for feature/patch (real Mermaid, not scaffold stub).
@@ -157,15 +146,6 @@ func RunWithOptions(repoRoot string, b *schema.Board, cfg schema.Config, opts Op
 		Findings: findings,
 		At:       time.Now().UTC(),
 	}
-	if cfg.Isolation.Strict && hasWarning(findings, "isolation_warning") {
-		passed = false
-		b.Audit.Passed = false
-		findings = append(findings, schema.Finding{
-			Code: "isolation_strict", Severity: schema.SevError,
-			Message: "isolation.strict=true and isolation warning present",
-		})
-		b.Audit.Findings = findings
-	}
 
 	return Result{Passed: passed, Findings: findings}
 }
@@ -232,15 +212,6 @@ func truncateRunOutput(s string, max int) string {
 		return s
 	}
 	return s[:max] + "\n…(truncated)"
-}
-
-func hasWarning(findings []schema.Finding, code string) bool {
-	for _, f := range findings {
-		if f.Code == code {
-			return true
-		}
-	}
-	return false
 }
 
 func isHowItWorksCommentOnly(how string) bool {
